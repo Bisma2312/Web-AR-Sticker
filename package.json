@@ -1,0 +1,19 @@
+{
+  "name": "webar-sticker-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebAR sticker filter prototype with MindAR, React, Express, SVG stickers, canvas, and QR",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "NODE_ENV=development node server/index.js",
+    "build": "esbuild public/app.js --bundle --outfile=public/app.bundle.js --format=iife --platform=browser --loader:.js=jsx --minify"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}

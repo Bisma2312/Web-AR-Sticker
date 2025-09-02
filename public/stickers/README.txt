@@ -1,0 +1,1 @@
+PNG fallbacks for AR texture loader are auto-generated at runtime by the browser when loading SVG via <img> on canvas. For MindAR texture, we provide pre-rendered PNGs below. If missing, MindAR will attempt to load the SVGs directly which might not always work.
