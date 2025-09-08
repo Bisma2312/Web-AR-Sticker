@@ -238,7 +238,7 @@
     await disposeCurrent();
     
     // Add delay to ensure proper cleanup
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     currentFacingMode = targetFacingMode;
     
@@ -328,31 +328,27 @@
       updateLabel();
       
       camBtn.addEventListener('click', async () => {
-        if (camBtn.disabled) return;
-        
-        try { 
-          camBtn.disabled = true;
-          camBtn.textContent = 'Switching...';
-        } catch(_){}
-        
-        const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
-        console.log('Attempting camera switch from', currentFacingMode, 'to', next);
-        
-        const success = await restartAR(next);
-        
-        if (success) {
-          updateLabel();
-          console.log('Camera switch completed successfully');
-        } else {
-          // Revert button text on failure
-          updateLabel();
-          console.warn('Camera switch failed, staying on', currentFacingMode);
-        }
-        
-        try { 
-          camBtn.disabled = false;
-        } catch(_){}
-      });
+      if (camBtn.disabled) return;
+    
+      try { 
+        camBtn.disabled = true;
+        camBtn.textContent = 'Switching...';
+      } catch(_) {}
+    
+      // Panggil fungsi bawaan MindAR untuk beralih kamera
+      // Ini menggantikan seluruh logika 'restartAR' yang Anda buat
+      mindarThree.arSystem.switchCamera();
+    
+     // Perbarui label tombol setelah beralih
+      const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
+      currentFacingMode = next;
+      updateLabel();
+    
+      try { 
+        camBtn.disabled = false;
+        camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam';
+      } catch(_) {}
+  });
     }
   } catch(e) {
     console.error('Error setting up camera button:', e);
