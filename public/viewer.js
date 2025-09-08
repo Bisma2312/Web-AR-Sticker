@@ -340,6 +340,16 @@
     }
   }
 
+  const initialConfig = {
+  container,
+  maxFaces: 1,
+  faceIndex: 0,
+  uiScanning: false,
+  uiLoading: false,
+  uiError: false,
+  camera: { facingMode: { ideal: currentFacingMode } }
+  };
+
   startAR(initialConfig);
 
   // Wire camera toggle button
