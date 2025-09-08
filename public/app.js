@@ -466,8 +466,11 @@ const doUpload = async () => {
                   <button className="btn" onClick={()=>{ setRefining(false); setClickPoint(null); }}>Cancel</button>
                 </>
               )}
-              <button className="primary" onClick={doUpload} disabled={!file || uploading}>
-                {uploading ? 'Uploading...' : 'Upload & Generate QR'}
+              <button 
+                  className="primary" 
+                  onClick={doUpload} 
+                  disabled={!files || files.length === 0 || uploading}>
+                  {uploading ? 'Uploading...' : 'Upload & Generate QR'}
               </button>
             </div>
           <div className="row-center subtle">Use HTTPS on mobile to allow camera.</div>
