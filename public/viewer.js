@@ -328,27 +328,35 @@
       updateLabel();
       
       camBtn.addEventListener('click', async () => {
-      if (camBtn.disabled) return;
+    if (camBtn.disabled) return;
     
-      try { 
-        camBtn.disabled = true;
-        camBtn.textContent = 'Switching...';
-      } catch(_) {}
+    // Menonaktifkan tombol dan memperbarui teks untuk umpan balik
+    camBtn.disabled = true;
+    camBtn.textContent = 'Switching...';
     
-      // Panggil fungsi bawaan MindAR untuk beralih kamera
-      // Ini menggantikan seluruh logika 'restartAR' yang Anda buat
-      mindarThree.arSystem.switchCamera();
-    
-     // Perbarui label tombol setelah beralih
-      const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
-      currentFacingMode = next;
-      updateLabel();
-    
-      try { 
-        camBtn.disabled = false;
+    try {
+        // Panggil fungsi bawaan MindAR dan tunggu hingga selesai
+        await mindarThree.arSystem.switchCamera();
+        
+        // Perbarui currentFacingMode setelah peralihan berhasil
+        const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
+        currentFacingMode = next;
+        
+        // Perbarui label tombol untuk mencerminkan status baru
         camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam';
-      } catch(_) {}
-  });
+        console.log('Camera switch successful:', currentFacingMode);
+        
+    } catch (error) {
+        // Menangani kesalahan jika peralihan gagal
+        console.error('Camera switch failed:', error);
+        // Kembali ke label sebelumnya dan tampilkan pesan kesalahan
+        camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam';
+        if (statusEl) statusEl.textContent = `Peralihan kamera gagal: ${error.message}`;
+    }
+    
+    // Selalu aktifkan kembali tombol
+    camBtn.disabled = false;
+});
     }
   } catch(e) {
     console.error('Error setting up camera button:', e);
