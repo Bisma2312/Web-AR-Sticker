@@ -117,8 +117,6 @@
     return;
   }
 
-  startAR(initialConfig);
-
   // MindAR + Three setup
   let renderer, scene, camera;
   
@@ -341,6 +339,8 @@
       return false;
     }
   }
+
+  startAR(initialConfig);
 
   // Wire camera toggle button
   try {
