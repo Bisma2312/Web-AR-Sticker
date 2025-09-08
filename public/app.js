@@ -26,76 +26,77 @@ function App() {
     });
   }, []);
 
-  const onChoose = (e) => {
-    const f = e.target.files?.[0];
-    setFile(f || null);
+const [files, setFiles] = React.useState([]); // Gunakan state untuk array
+const onChoose = (e) => {
+    const f = e.target.files;
+    setFiles(Array.from(f)); // Simpan semua file dalam array
     setUploadResp(null);
     setErrorMsg('');
-    if (f) setPreviewUrl(URL.createObjectURL(f));
-    else setPreviewUrl(null);
+    if (f && f.length > 0) {
+        // Tampilkan pratinjau untuk file pertama saja
+        setPreviewUrl(URL.createObjectURL(f[0]));
+    } else {
+        setPreviewUrl(null);
+    }
     setRefining(false);
     setClickPoint(null);
-  };
-
-  const doUpload = async () => {
-    if (!file) return;
+};
+const doUpload = async () => {
+    if (!files || files.length === 0) return;
     setErrorMsg('');
     setUploading(true);
     setUploadStage('uploading');
-    
-    try {
-      // Simulate upload progress
-      setTimeout(() => setUploadStage('processing'), 1000);
-      
-      const fd = new FormData();
-      fd.append('image', file);
-      const resp = await fetch('/api/upload', { method: 'POST', body: fd });
-      
-      if (!resp.ok) {
-        try {
-          const data = await resp.json();
-          setErrorMsg(data?.error + (data?.details ? `: ${data.details}` : ''));
-        } catch (_) {
-          const text = await resp.text();
-          setErrorMsg(text || 'Upload failed');
-        }
-        return;
-      }
-      
-      setUploadStage('generating');
-      setTimeout(() => setUploadStage('finalizing'), 500);
-      
-      const data = await resp.json();
-      setUploadResp(data);
-      
-      // Defer QR generation until page fully loaded to avoid forced layout warnings
-      const genQR = () => {
-        if (!qrRef.current) return;
-        try {
-          qrRef.current.innerHTML = '';
-          new window.QRCode(qrRef.current, { text: `${location.origin}${data.viewerUrl}`, width: 128, height: 128 });
-        } catch (e) {
-          console.error('QR generation failed:', e);
-        }
-      };
-      if (document.readyState === 'complete') {
-        requestAnimationFrame(() => requestAnimationFrame(genQR));
-      } else {
-        window.addEventListener('load', genQR, { once: true });
-      }
-      
-      setUploadStage('complete');
-    } catch (error) {
-      console.error('Upload error:', error);
-      setErrorMsg('Upload failed: ' + (error.message || 'Network error'));
-    } finally {
-      setTimeout(() => {
-        setUploading(false);
-        setUploadStage('');
-      }, 1000);
-    }
-  };
 
+    try {
+        // Lakukan perulangan untuk setiap file yang dipilih
+        const uploadPromises = files.map(file => {
+            const fd = new FormData();
+            // Penting: Ubah nama field dari 'image' menjadi 'images' agar sesuai dengan Multer di server
+            fd.append('images', file);
+            return fetch('/api/upload', { method: 'POST', body: fd });
+        });
+
+        // Tunggu semua promise selesai
+        const responses = await Promise.all(uploadPromises);
+
+        // Periksa apakah ada respons yang gagal
+        const firstFailed = responses.find(resp => !resp.ok);
+        if (firstFailed) {
+            // Tangani error, misal dari respons pertama yang gagal
+            const data = await firstFailed.json();
+            setErrorMsg(data?.error + (data?.details ? `: ${data.details}` : ''));
+            return;
+        }
+
+        // Kumpulkan data dari semua respons yang sukses
+        const uploadResults = await Promise.all(responses.map(resp => resp.json()));
+        
+        // Gabungkan semua hasil upload ke dalam satu array
+        const combinedData = uploadResults.reduce((acc, current) => {
+            // Asumsi setiap respons sukses mengembalikan viewerUrl
+            // Logika ini mungkin perlu disesuaikan dengan respons API Anda
+            if (current.viewerUrl) {
+                acc.push(current);
+            }
+            return acc;
+        }, []);
+        
+        setUploadResp({ viewerUrls: combinedData.map(d => d.viewerUrl) }); // Simpan semua URL
+        setUploadStage('complete');
+        
+        // ... Logika untuk menampilkan QR code dan lainnya
+        // Mungkin perlu diubah untuk menampilkan beberapa QR code atau URL
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        setErrorMsg('Upload failed: ' + (error.message || 'Network error'));
+    } finally {
+        setTimeout(() => {
+            setUploading(false);
+            setUploadStage('');
+        }, 1000);
+    }
+};
   const doBgRemove = async () => {
     if (!file) return;
     setErrorMsg('');
@@ -443,7 +444,7 @@ function App() {
             
             <div className="row-center">
               <label className="btn" style={{cursor:'pointer'}}>
-                <input type="file" accept="image/*" onChange={onChoose} style={{display:'none'}} disabled={uploading} />
+               <input type="file" accept="image/*" multiple onChange={onChoose} style={{display:'none'}} disabled={uploading} />
                 Choose Image
               </label>
               {!refining ? (
