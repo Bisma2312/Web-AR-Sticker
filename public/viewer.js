@@ -1,6 +1,5 @@
 // AR Viewer with in-AR sticker editing via direct tap and overlay handles
 (async function(){
-  let mindarThree = null;
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
   const t = qs.get('t');
@@ -22,30 +21,11 @@
                    window.innerWidth <= 768;
   // Video is not mirrored; map screen angle (y-down) to Three.js rotation (y-up)
   const rotationSign = -1;
+
+  let mindarThree = null;
+
   // Track current facing mode (front/user or rear/environment)
   let currentFacingMode = useRear ? 'environment' : 'user';
-
-  async function startAR(config) {
-    try {
-      if (statusEl) statusEl.textContent = 'Memuat AR Engine...';
-
-      // Buat objek MindARThree
-      mindarThree = new window.MINDAR.FACE.MindARThree(config);
-      ({ renderer, scene, camera } = mindarThree);
-
-      // ... sisa kode inisialisasi ...
-
-      await mindarThree.start();
-
-    } catch (error) {
-      // Tangkap kesalahan di sini jika inisialisasi awal gagal
-      console.error("Gagal memulai MindAR:", error);
-      if (statusEl) statusEl.textContent = `Gagal memulai AR: ${error.message}`;
-      // Hentikan eksekusi jika gagal
-      return;
-    }
-  }
-
   // Mobile camera setup and permissions
   async function setupMobileCamera(facingMode = currentFacingMode) {
     if (!isMobile) return true;
@@ -138,7 +118,7 @@
   }
 
   startAR(initialConfig);
-  
+
   // MindAR + Three setup
   let renderer, scene, camera;
   
@@ -241,6 +221,27 @@
       } catch(e) { console.warn('Rebuild instance failed', s && s.key, e); }
     }
     try { updateSelectionOverlay(); } catch(_){}
+  }
+
+  async function startAR(config) {
+    try {
+      if (statusEl) statusEl.textContent = 'Memuat AR Engine...';
+
+      // Buat objek MindARThree
+      mindarThree = new window.MINDAR.FACE.MindARThree(config);
+      ({ renderer, scene, camera } = mindarThree);
+
+      // ... sisa kode inisialisasi ...
+
+      await mindarThree.start();
+
+    } catch (error) {
+      // Tangkap kesalahan di sini jika inisialisasi awal gagal
+      console.error("Gagal memulai MindAR:", error);
+      if (statusEl) statusEl.textContent = `Gagal memulai AR: ${error.message}`;
+      // Hentikan eksekusi jika gagal
+      return;
+    }
   }
 
   // Restart AR with given facingMode (user/environment)
