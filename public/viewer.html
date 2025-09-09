@@ -14,30 +14,81 @@
       .chip { pointer-events: auto; padding: 6px 10px; border-radius: 12px; background: #1f2937; border: 1px solid #374151; transition: all 0.2s ease; }
       .chip:hover { background: #374151; transform: translateY(-1px); }
       .chip.button { cursor: pointer; user-select: none; }
-      .chip.button:active { transform: translateY(0px); background: #4b5563; }
-      .chip.button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-      .chip.button:disabled:hover { background: #1f2937; transform: none; }
-      .chip.button.active { border-color: #60a5fa; color: #60a5fa; }
-      .tray { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 12px 18px; display:flex; gap:12px; justify-content:center; align-items:flex-end; background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.85) 35%, rgba(15,23,42,0.95) 100%); overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .thumb { display:flex; flex-direction:column; align-items:center; gap:6px; background: transparent; border: none; cursor: pointer; }
-      .thumb .img { width: 60px; height: 60px; border-radius: 50%; overflow: hidden; background: #0b1020; border: 2px solid #374151; box-shadow: 0 6px 16px rgba(0,0,0,0.45); transition: transform .15s ease; }
-      .thumb .img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-      .thumb .label { font-size: 12px; color: #e5e7eb; opacity: 0; transform: translateY(4px); transition: opacity .16s ease, transform .16s ease; }
-      .thumb:active .label, .thumb.active .label { opacity: .9; transform: translateY(0); }
-      .thumb.active .img { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.25); }
-      .thumb.bounce .img { animation: pop .25s ease-out; }
-      @keyframes pop { 0% { transform: scale(1) } 50% { transform: scale(1.08) } 100% { transform: scale(1) } }
-      .thumb:disabled, .thumb.disabled { opacity: .45; pointer-events: none; }
-      .thumb.loading .img { border-color: #f59e0b; animation: pulse 1.5s ease-in-out infinite; }
-      .thumb.loading .img::after { content: "⏳"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #f59e0b; font-size: 16px; }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-      /* Selection overlay */
-      #selection { position: fixed; border: 2px solid #60a5fa; border-radius: 8px; pointer-events: none; }
-      #selection .handle { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #60a5fa; border: 2px solid #0b1020; pointer-events: auto; display: grid; place-items: center; color: #0b1020; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+      .chip.button:active { transform: translateY(0); }
+      .tray { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 12px; justify-content: center; padding: 16px; background: rgba(15,23,42,0.8); backdrop-filter: blur(8px); pointer-events: none; }
+      .tray .thumb { pointer-events: auto; width: 64px; height: 64px; background: #1f2937; border: 2px solid transparent; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; }
+      .tray .thumb.active { border-color: #60a5fa; transform: scale(1.1); }
+      .tray .thumb:hover { transform: scale(1.05); }
+      .tray .thumb.loading::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.6); animation: pulse 1.5s infinite ease-out; }
+      .tray .thumb.disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+      .tray .thumb.bounce { animation: bounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      .tray .thumb img, .tray .thumb svg { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+      @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 0.8; } 100% { opacity: 0.5; } }
+      @keyframes bounce { 0% { transform: scale(1.1); } 50% { transform: scale(1.2); } 100% { transform: scale(1.1); } }
+      
+      #selection { position: fixed; top: 0; left: 0; right: 0; bottom: 0; border: 2px solid #60a5fa; box-sizing: content-box; pointer-events: none; }
+      #selection .handle { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: #60a5fa; border: 2px solid #0f172a; pointer-events: auto; display: grid; place-items: center; color: #0b1020; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
       #selection .h-rotate { top: -14px; right: -14px; cursor: grab; }
       #selection .h-scale { bottom: -14px; right: -14px; cursor: nwse-resize; }
       #selection .bar { position: absolute; top: -40px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
       #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; font-size: 12px; }
+
+      /* PRATINJAU BARU */
+      #preview-container {
+        position: fixed;
+        inset: 0;
+        background: #0f172a;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        z-index: 100;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+
+      #preview-container.active {
+        visibility: visible;
+        opacity: 1;
+      }
+      
+      #preview-image {
+        max-width: 90%;
+        max-height: 80%;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      }
+
+      .preview-buttons {
+        display: flex;
+        gap: 16px;
+      }
+      
+      .preview-buttons .button {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        transition: transform 0.2s ease;
+      }
+
+      .preview-buttons .button:hover {
+        transform: translateY(-2px);
+      }
+
+      #download-btn {
+        background-color: #60a5fa;
+        color: #0b1020;
+      }
+
+      #retake-btn {
+        background-color: #374151;
+        color: #e5e7eb;
+      }
     </style>
   </head>
   <body>
@@ -46,25 +97,32 @@
       <div class="chip">AR Viewer</div>
       <div style="display:flex; gap:8px; align-items:center; pointer-events:auto;">
         <button id="cam-btn" class="chip button">Switch Cam</button>
-        <button id="mode-toggle-btn" class="chip button">📷</button>
-        <button id="capture-btn" class="chip primary button">Capture</button>
         <div id="status" class="chip">Loading...</div>
       </div>
     </div>
     <div class="tray">
       <button class="thumb" data-add="glasses">
-        <div class="img"><img alt="Glasses" /></div>
-        <div class="label">Glasses</div>
+        <div class="overlay"></div><img src="" alt="Glasses">
       </button>
       <button class="thumb" data-add="hat">
-        <div class="img"><img alt="Hat" /></div>
-        <div class="label">Hat</div>
+        <div class="overlay"></div><img src="" alt="Hat">
       </button>
       <button class="thumb" data-add="uploaded">
-        <div class="img"><img alt="Uploaded" /></div>
-        <div class="label">Uploaded</div>
+        <div class="overlay"></div><img src="" alt="Sticker">
+      </button>
+      <button id="mode-toggle-btn" class="thumb"><img src="" alt="Mode"></button>
+      <button id="capture-btn" class="thumb">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/%3E%3C/svg%3E" alt="Capture">
       </button>
     </div>
-    <script src="/viewer.js"></script>
+
+    <div id="preview-container">
+      <img id="preview-image" src="" alt="Captured Photo">
+      <div class="preview-buttons">
+        <button id="retake-btn" class="button">Back to AR</button>
+        <button id="download-btn" class="button">Download</button>
+      </div>
+    </div>
   </body>
+  <script src="/viewer.js"></script>
 </html>

@@ -6,54 +6,45 @@
   const cam = qs.get('cam'); // 'front' | 'rear'
   const useRear = cam === 'rear';
   const imgUrl = id && t ? `/api/image/${id}?t=${t}` : null;
-  
+
   // Debug logging for troubleshooting
   console.log('URL Parameters:', { id, t, imgUrl });
   console.log('Current location:', window.location.href);
-  
+
   const statusEl = document.getElementById('status');
   const container = document.getElementById('ar');
   if (!id || !t) { if (statusEl) statusEl.textContent = 'Missing token'; return; }
   if (!container) { if (statusEl) statusEl.textContent = 'AR container not found'; return; }
 
   // Mobile detection and viewport adjustment (moved to top)
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                    window.innerWidth <= 768;
   // Video is not mirrored; map screen angle (y-down) to Three.js rotation (y-up)
   const rotationSign = -1;
   // Track current facing mode (front/user or rear/environment)
   let currentFacingMode = useRear ? 'environment' : 'user';
 
-  // State untuk mode foto/video
-  let currentMode = 'photo'; // 'photo' atau 'video'
-  let isRecording = false;
-  let mediaRecorder;
-  let recordedBlobs;
-
-  const modeToggleBtn = document.getElementById('mode-toggle-btn');
-  const captureBtn = document.getElementById('capture-btn');
-
   // Mobile camera setup and permissions
   async function setupMobileCamera(facingMode = currentFacingMode) {
     if (!isMobile) return true;
-    
+
     try {
       // Check if camera is available first
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera API not available');
       }
-      
+
       // Test camera access with the specified facing mode
-      const constraints = { 
-        video: { 
+      const constraints = {
+        video: {
           facingMode: { ideal: facingMode },
           width: { ideal: 640, max: 1280 },
           height: { ideal: 480, max: 720 }
-        } 
+        }
       };
-      
+
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
+
       // Check if we got the right facing mode
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
@@ -61,7 +52,7 @@
         console.log('Camera settings:', settings);
         console.log('Requested facing mode:', facingMode, 'Actual:', settings.facingMode);
       }
-      
+
       // Stop the test stream
       stream.getTracks().forEach(track => track.stop());
       return true;
@@ -87,16 +78,17 @@
       if (!gl) {
         throw new Error('WebGL not supported');
       }
-      
+
       // Check for basic WebGL capabilities
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
+        // Fix: Changed 'WEBG' to 'WEBGL'
         const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
         const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
         console.log('WebGL Vendor:', vendor);
         console.log('WebGL Renderer:', renderer);
       }
-      
+
       // Check for required extensions
       const requiredExtensions = ['OES_texture_float', 'OES_standard_derivatives'];
       for (const ext of requiredExtensions) {
@@ -104,7 +96,7 @@
           console.warn(`WebGL extension ${ext} not supported`);
         }
       }
-      
+
       return true;
     } catch (e) {
       console.error('WebGL not supported:', e);
@@ -126,7 +118,7 @@
 
   // MindAR + Three setup
   let mindarThree, renderer, scene, camera;
-  
+
   try {
     // Mobile-optimized MindAR configuration
     const mindarConfig = {
@@ -136,8 +128,6 @@
       uiScanning: false, // Disable default UI for custom implementation
       uiLoading: false,
       uiError: false,
-      // **PERBAIKAN FOTO: Hapus opsi ini karena tidak berfungsi andal di semua peramban**
-      // rendererOptions: { preserveDrawingBuffer: true },
       // Mobile-specific camera settings with improved constraints
       camera: {
         facingMode: { ideal: currentFacingMode }, // Use ideal for better compatibility
@@ -146,10 +136,10 @@
         aspectRatio: { ideal: 4/3 }
       }
     };
-    
+
     mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig);
     ({ renderer, scene, camera } = mindarThree);
-    
+
     if (!renderer || !scene || !camera) {
       throw new Error('MindAR failed to initialize properly');
     }
@@ -166,8 +156,8 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
     }
   } catch (_) {}
-  
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1); 
+
+  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
   // In-place camera switch helpers and wiring
@@ -191,7 +181,7 @@
   // Dispose current renderer/canvas and MindAR
   async function disposeCurrent(){
     try { if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null); } catch(_){}
-    
+
     // Stop and clean up video streams
     try {
       if (mindarThree && mindarThree.video) {
@@ -207,7 +197,7 @@
     } catch(e) {
       console.warn('Error stopping video tracks:', e);
     }
-    
+
     try { if (mindarThree && typeof mindarThree.stop === 'function') await mindarThree.stop(); } catch(_){}
     try { if (renderer && renderer.dispose) renderer.dispose(); } catch(_){}
     try { if (container) { while (container.firstChild) container.removeChild(container.firstChild); } } catch(_){}
@@ -233,9 +223,9 @@
   // Restart AR with given facingMode (user/environment)
   async function restartAR(nextFacingMode){
     try { if (statusEl) statusEl.textContent = 'Switching camera...'; } catch(_){}
-    
+
     const targetFacingMode = nextFacingMode || currentFacingMode;
-    
+
     // Test camera availability before switching
     if (isMobile) {
       const cameraReady = await setupMobileCamera(targetFacingMode);
@@ -244,15 +234,15 @@
         return false;
       }
     }
-    
+
     const snap = snapshotInstances();
     await disposeCurrent();
-    
+
     // Add delay to ensure proper cleanup
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     currentFacingMode = targetFacingMode;
-    
+
     try {
       // Re-init MindAR with improved camera constraints
       const mindarConfig2 = {
@@ -262,7 +252,6 @@
         uiScanning: false,
         uiLoading: false,
         uiError: false,
-        rendererOptions: { preserveDrawingBuffer: true }, // **PERBAIKAN FOTO: Tambahkan opsi ini**
         camera: {
           facingMode: { ideal: currentFacingMode },
           width: { ideal: isMobile ? 640 : 1280 },
@@ -270,19 +259,19 @@
           aspectRatio: { ideal: 4/3 }
         }
       };
-      
+
       mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig2);
       ({ renderer, scene, camera } = mindarThree);
-      
+
       if (!renderer || !scene || !camera) {
         throw new Error('MindAR failed to initialize after camera switch');
       }
-      
+
       const light2 = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
       scene.add(light2);
-      
+
       await mindarThree.start();
-      
+
       // Configure video element for mobile
       if (mindarThree.video && isMobile) {
         const video = mindarThree.video;
@@ -292,36 +281,36 @@
         video.autoplay = true;
         video.style.objectFit = 'cover';
       }
-      
-      try { 
-        const maxDpr = 2; 
+
+      try {
+        const maxDpr = 2;
         if (renderer && renderer.setPixelRatio) {
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, maxDpr)); 
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, maxDpr));
         }
       } catch(_){}
-      
+
       await rebuildInstancesFromSnapshot(snap);
-      
+
       if (renderer && renderer.setAnimationLoop) {
-        renderer.setAnimationLoop(() => { 
-          try { 
-            if (renderer && scene && camera) { 
-              renderer.render(scene, camera); 
-              updateSelectionOverlay(); 
-              updateStickerPositions(); 
+        renderer.setAnimationLoop(() => {
+          try {
+            if (renderer && scene && camera) {
+              renderer.render(scene, camera);
+              updateSelectionOverlay();
+              updateStickerPositions();
             }
           }
-          catch (error) { 
-            console.error('Render loop error (restart):', error); 
-            if (statusEl) statusEl.textContent = 'Render error occurred'; 
+          catch (error) {
+            console.error('Render loop error (restart):', error);
+            if (statusEl) statusEl.textContent = 'Render error occurred';
           }
         });
       }
-      
+
       if (statusEl) statusEl.textContent = `Camera switched to ${currentFacingMode} - Tracking face...`;
       console.log('Camera switch successful:', currentFacingMode);
       return true;
-      
+
     } catch (error) {
       console.error('Camera switch failed:', error);
       if (statusEl) statusEl.textContent = `Camera switch failed: ${error.message}`;
@@ -333,25 +322,25 @@
   try {
     const camBtn = document.getElementById('cam-btn');
     if (camBtn) {
-      function updateLabel(){ 
-        camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam'; 
+      function updateLabel(){
+        camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam';
       }
-      
+
       updateLabel();
-      
+
       camBtn.addEventListener('click', async () => {
         if (camBtn.disabled) return;
-        
-        try { 
+
+        try {
           camBtn.disabled = true;
           camBtn.textContent = 'Switching...';
         } catch(_){}
-        
+
         const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
         console.log('Attempting camera switch from', currentFacingMode, 'to', next);
-        
+
         const success = await restartAR(next);
-        
+
         if (success) {
           updateLabel();
           console.log('Camera switch completed successfully');
@@ -360,136 +349,14 @@
           updateLabel();
           console.warn('Camera switch failed, staying on', currentFacingMode);
         }
-        
-        try { 
+
+        try {
           camBtn.disabled = false;
         } catch(_){}
       });
     }
   } catch(e) {
     console.error('Error setting up camera button:', e);
-  }
-
-  // **PERBAIKAN UTAMA: Mengganti fungsi takePhoto()**
-  function takePhoto() {
-    if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement) {
-      console.error('Renderer or canvas not available');
-      return;
-    }
-
-    const glCanvas = mindarThree.renderer.domElement;
-    const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = glCanvas.width;
-    offscreenCanvas.height = glCanvas.height;
-    
-    const ctx = offscreenCanvas.getContext('2d');
-    
-    try {
-        ctx.drawImage(glCanvas, 0, 0);
-        const photoURL = offscreenCanvas.toDataURL('image/png');
-        
-        // Buat link untuk mendownload gambar
-        const link = document.createElement('a');
-        link.href = photoURL;
-        link.download = 'ar-photo.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        console.log('Photo saved!');
-        if (statusEl) statusEl.textContent = 'Photo saved!';
-    } catch (error) {
-        console.error('Failed to draw canvas or save photo:', error);
-        if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
-    }
-    
-  }
-
-  function startVideoRecording() {
-    if (!mindarThree || !mindarThree.video || isRecording) return;
-  
-    const stream = mindarThree.video.captureStream();
-    recordedBlobs = [];
-  
-    try {
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
-    } catch (e) {
-      console.error('Exception while creating MediaRecorder:', e);
-      if (statusEl) statusEl.textContent = 'Video recording not supported.';
-      return;
-    }
-  
-    mediaRecorder.onstop = (event) => {
-      console.log('Recorder stopped:', event);
-      const superBuffer = new Blob(recordedBlobs, { type: 'video/webm' });
-      const videoURL = window.URL.createObjectURL(superBuffer);
-    
-      const link = document.createElement('a');
-      link.href = videoURL;
-      link.download = 'ar-video.webm';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(videoURL);
-      if (statusEl) statusEl.textContent = 'Video saved!';
-    };
-  
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        recordedBlobs.push(event.data);
-      }
-    };
-  
-    mediaRecorder.start();
-    isRecording = true;
-    captureBtn.textContent = '⏹️ Stop';
-    if (statusEl) statusEl.textContent = 'Recording...';
-    console.log('Video recording started');
-  }
-
-  function stopVideoRecording() {
-    if (!isRecording || !mediaRecorder) return;
-    mediaRecorder.stop();
-    isRecording = false;
-    captureBtn.textContent = 'Capture';
-    console.log('Video recording stopped');
-  }
-
-  // Wire mode toggle button
-  if (modeToggleBtn) {
-    modeToggleBtn.addEventListener('click', () => {
-      if (isRecording) {
-        stopVideoRecording();
-      }
-      
-      if (currentMode === 'photo') {
-        currentMode = 'video';
-        modeToggleBtn.textContent = '📹';
-        if (statusEl) statusEl.textContent = 'Mode: Video';
-      } else {
-        currentMode = 'photo';
-        modeToggleBtn.textContent = '📷';
-        if (statusEl) statusEl.textContent = 'Mode: Photo';
-      }
-      console.log('Mode switched to:', currentMode);
-      // Update capture button text based on mode
-      captureBtn.textContent = currentMode === 'photo' ? 'Capture' : 'Record';
-    });
-  }
-
-  // Wire capture button
-  if (captureBtn) {
-    captureBtn.addEventListener('click', () => {
-      if (currentMode === 'photo') {
-        takePhoto();
-      } else { // 'video' mode
-        if (isRecording) {
-          stopVideoRecording();
-        } else {
-          startVideoRecording();
-        }
-      }
-    });
   }
 
   // Utility: SVG -> CanvasTexture for crisp scaling
@@ -501,31 +368,31 @@
       resolve(tex);
     }; img.onerror = reject; img.src = url;
   });
-  
+
   // Preload uploaded image to ensure it's available
   const preloadImage = (url) => new Promise((resolve, reject) => {
     if (!url) {
       reject(new Error('No URL provided'));
       return;
     }
-    
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    
+
     img.onload = () => {
       console.log('Image preloaded successfully:', url);
       try { preloadedImageCache.set(url, img); } catch (_) {}
       resolve(img);
     };
-    
+
     img.onerror = (error) => {
       console.error('Failed to preload image:', url, error);
       reject(new Error('Image load failed'));
     };
-    
+
     img.src = url;
   });
-  
+
   // Simplified image loading without HEAD validation
   const loadImageSafely = async (url) => {
     try {
@@ -536,7 +403,7 @@
       return false;
     }
   };
-  
+
   const loader = new THREE.TextureLoader();
   if (loader && loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
   if (THREE && THREE.Cache) THREE.Cache.enabled = true;
@@ -574,22 +441,22 @@
 
   // Sticker registry with mobile-optimized positioning
   const stickers = {
-    glasses: { 
-      name: 'Glasses', 
+    glasses: {
+      name: 'Glasses',
       anchor: 168, // Nose bridge point
       size: [0.8, 0.28], // Smaller size for mobile
       src: '/stickers/glasses.svg',
       mobileOffset: { x: 0, y: -0.05, z: 0.02 } // Center on face
     },
-    hat: { 
-      name: 'Hat', 
+    hat: {
+      name: 'Hat',
       anchor: 10, // Top of head
       size: [1.0, 0.6], // Adjusted size for mobile
       src: '/stickers/hat.svg',
       mobileOffset: { x: 0, y: 0.2, z: 0.02 } // Position above head
     },
-    uploaded: { 
-      name: 'Uploaded', 
+    uploaded: {
+      name: 'Uploaded',
       anchor: 168, // Use same anchor as glasses for better positioning
       size: [0.4, 0.4], // Smaller size for mobile
       src: imgUrl,
@@ -600,16 +467,16 @@
   // Adjust sticker positioning based on device
   function getAdjustedPosition(def, basePosition = { x: 0, y: 0, z: 0 }) {
     if (!isMobile) return basePosition;
-    
+
     const mobileOffset = def.mobileOffset || { x: 0, y: 0, z: 0 };
-    
+
     // Center stickers on face with proper offsets
     const viewportAdjustment = {
       x: mobileOffset.x,
       y: mobileOffset.y,
       z: mobileOffset.z
     };
-    
+
     return {
       x: basePosition.x + viewportAdjustment.x,
       y: basePosition.y + viewportAdjustment.y,
@@ -624,12 +491,12 @@
         // Ensure stickers stay within reasonable bounds
         const currentPos = inst.mesh.position;
         const maxOffset = isMobile ? 0.3 : 0.5;
-        
+
         // Clamp positions to keep stickers visible
         currentPos.x = Math.max(-maxOffset, Math.min(maxOffset, currentPos.x));
         currentPos.y = Math.max(-maxOffset, Math.min(maxOffset, currentPos.y));
         currentPos.z = Math.max(-0.1, Math.min(0.3, currentPos.z));
-        
+
         applyTransforms(inst);
       }
     });
@@ -643,46 +510,46 @@
   async function ensureInstance(key) {
     if (instances[key]) return instances[key];
     const def = stickers[key]; if (!def || !def.src) return null;
-    
+
     // Create anchor with proper face tracking
     const anchor = mindarThree.addAnchor(def.anchor);
     let texture;
-    
+
     if (def.src.endsWith('.svg')) {
       texture = await getSvgTextureCached(def.src);
     } else {
       texture = await getRasterTextureCached(def.src);
     }
-    
+
     const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
     const mesh = new THREE.Mesh(geo, mat);
-    
+
     // Center the mesh on the anchor point
     mesh.position.set(0, 0, 0);
-    
+
     // Apply mobile-optimized positioning as offset
     const adjustedPos = getAdjustedPosition(def);
     mesh.userData.mobileOffset = adjustedPos;
-    
+
     mesh.renderOrder = zCounter++;
     mesh.visible = false; // hidden by default; shown when user chooses
-    
+
     // Add mesh to anchor group
     anchor.group.add(mesh);
-    
-    const inst = { 
-      key, 
-      def, 
-      anchor, 
-      mesh, 
-      visible: false, 
-      scale: 1, 
-      rotation: 0, 
+
+    const inst = {
+      key,
+      def,
+      anchor,
+      mesh,
+      visible: false,
+      scale: 1,
+      rotation: 0,
       offset: { x: 0, y: 0 },
       mobileOffset: adjustedPos
     };
-    
+
     instances[key] = inst;
     return inst;
   }
@@ -713,7 +580,7 @@
     const m = inst.mesh;
     m.scale.setScalar(inst.scale);
     m.rotation.set(0, 0, inst.rotation);
-    
+
     // Apply user offset plus mobile offset for proper positioning
     const mobileOffset = inst.mobileOffset || { x: 0, y: 0, z: 0 };
     m.position.set(
@@ -754,10 +621,10 @@
     const v = v3.clone().project(camera);
     return { x: (v.x + 1) / 2 * rect.width + rect.left, y: (1 - v.y) / 2 * rect.height + rect.top };
   }
-  
+
   // Mobile-optimized gesture sensitivity
   const getGestureSensitivity = () => isMobile ? 0.0015 : 0.0025;
-  
+
   function updateSelectionOverlay(){
     if (!active || !instances[active] || !instances[active].visible) { overlay.style.display = 'none'; return; }
     overlay.style.display = 'block';
@@ -854,7 +721,7 @@
   document.querySelectorAll('.tray .thumb').forEach(btn => {
     const key = btn.getAttribute('data-add');
     const imgEl = btn.querySelector('img');
-    
+
     if (key === 'glasses') {
       imgEl.src = '/stickers/glasses.svg';
     } else if (key === 'hat') {
@@ -863,7 +730,7 @@
       if (imgUrl) {
         // Start loading state
         btn.classList.add('loading');
-        
+
         // Validate and preload the image
         loadImageSafely(imgUrl)
           .then((success) => {
@@ -895,11 +762,11 @@
         console.warn('No uploaded image URL available');
       }
     }
-    
+
     btn.addEventListener('click', async () => {
       const inst = await ensureInstance(key);
       if (!inst) return;
-      
+
       // Mobile-optimized initial placement
       if (isMobile) {
         // Reset to optimal mobile position
@@ -908,11 +775,11 @@
         inst.rotation = 0;
         applyTransforms(inst);
       }
-      
-      inst.visible = true; 
-      inst.mesh.visible = true; 
+
+      inst.visible = true;
+      inst.mesh.visible = true;
       setActive(key);
-      
+
       // Mobile-specific feedback
       if (isMobile && statusEl) {
         statusEl.textContent = `${inst.def.name} added - Tap to adjust`;
@@ -921,7 +788,7 @@
   });
 
   if (statusEl) statusEl.textContent = 'Starting camera...';
-  
+
   // Setup mobile camera permissions first
   if (isMobile) {
     if (statusEl) statusEl.textContent = 'Setting up mobile camera...';
@@ -931,19 +798,19 @@
       return;
     }
   }
-  
+
   // Improve resilience and error visibility during startup
   try {
     // Add timeout for MindAR start
     const startPromise = mindarThree.start();
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Camera start timeout')), 15000)
     );
-    
+
     await Promise.race([startPromise, timeoutPromise]);
-    
+
     if (statusEl) statusEl.textContent = 'Tracking face...';
-    
+
     // Enhanced face tracking events for better mobile performance
     // Check if MindAR supports event handling
     if (mindarThree && typeof mindarThree.on === 'function') {
@@ -951,7 +818,7 @@
         if (statusEl) statusEl.textContent = 'Face detected - Ready for stickers';
         console.log('Face detected, ready for AR stickers');
       });
-      
+
       mindarThree.on('faceLost', () => {
         if (statusEl) statusEl.textContent = 'Face lost - Move back into view';
         console.log('Face lost, waiting for face to return');
@@ -961,16 +828,16 @@
       console.log('MindAR event handling not available, using fallback');
       if (statusEl) statusEl.textContent = 'Face tracking active - Ready for stickers';
     }
-    
+
     // Nudge iOS/Safari to behave with inline camera playback
     try {
       const v = mindarThree.video;
-      if (v) { 
-        v.setAttribute('playsinline', ''); 
-        v.playsInline = true; 
-        v.muted = true; 
+      if (v) {
+        v.setAttribute('playsinline', '');
+        v.playsInline = true;
+        v.muted = true;
         v.autoplay = true;
-        
+
         // Mobile-specific video optimizations (no mirroring)
         if (isMobile) {
           v.style.objectFit = 'cover';
@@ -979,7 +846,7 @@
     } catch (_) {}
   } catch (err) {
     console.error('MindAR start failed:', err);
-    
+
     // Check if it's actually a camera error or just a startup delay
     if (err.message && err.message.includes('timeout')) {
       if (statusEl) statusEl.textContent = 'Camera starting up... Please wait';
@@ -1011,17 +878,17 @@
 
   // Safe renderer animation loop with error handling
   if (renderer && renderer.setAnimationLoop) {
-    renderer.setAnimationLoop(() => { 
+    renderer.setAnimationLoop(() => {
       try {
         if (renderer && scene && camera) {
-          renderer.render(scene, camera); 
-          updateSelectionOverlay(); 
+          renderer.render(scene, camera);
+          updateSelectionOverlay();
           updateStickerPositions(); // Update sticker positions each frame
-          
+
           // Check face tracking status and update UI
           if (mindarThree && mindarThree.faceTracker) {
             const isTracking = mindarThree.faceTracker.isTracking;
-            if (isTracking && statusEl && statusEl.textContent.includes('Starting') || statusEl.textContent.includes('Camera starting')) {
+            if (isTracking && statusEl && (statusEl.textContent.includes('Starting') || statusEl.textContent.includes('Camera starting'))) {
               statusEl.textContent = 'Face tracking active - Ready for stickers';
             }
           }
@@ -1035,7 +902,7 @@
     console.error('Renderer animation loop not available');
     if (statusEl) statusEl.textContent = 'Graphics system error';
   }
-  
+
   // Mobile resume recovery: attempt to reinitialize camera when returning to the page
   async function maybeRecoverCamera(){
     try {
