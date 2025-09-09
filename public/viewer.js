@@ -17,7 +17,7 @@
   if (!container) { if (statusEl) statusEl.textContent = 'AR container not found'; return; }
 
   // Mobile detection and viewport adjustment (moved to top)
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+  const isMobile = /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
   const rotationSign = -1;
   let currentFacingMode = useRear ? 'environment' : 'user';
@@ -26,6 +26,9 @@
   let isRecording = false;
   let mediaRecorder;
   let recordedBlobs;
+  let recordingCanvas; // Kanvas untuk menggabungkan video dan AR
+  let recordingCtx;
+  let videoRecordLoop; // Loop untuk menggambar video selama perekaman
 
   const modeToggleBtn = document.getElementById('mode-toggle-btn');
   const captureBtn = document.getElementById('capture-btn');
@@ -266,71 +269,77 @@
     }
   } catch(e) { console.error('Error setting up camera button:', e); }
 
-function takePhoto() {
-  if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video) {
-    console.error('Renderer, canvas, or video not available');
-    return;
-  }
-  const glCanvas = mindarThree.renderer.domElement; // Canvas WebGL dengan stiker AR
-  const videoElement = mindarThree.video; // Elemen video kamera
-
-  requestAnimationFrame(() => {
-    const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = glCanvas.width;
-    offscreenCanvas.height = glCanvas.height;
-    const ctx = offscreenCanvas.getContext('2d');
-
-    try {
-      // 1. Gambar frame video ke offscreen canvas SEBELUM menggambar WebGL
-      // Ini akan menjadi latar belakang.
-      // Pastikan aspek rasio video dipertahankan atau di-crop sesuai kebutuhan.
-      const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
-      const canvasRatio = offscreenCanvas.width / offscreenCanvas.height;
-
-      let sx, sy, sWidth, sHeight; // Sumber video
-      let dx, dy, dWidth, dHeight; // Destinasi canvas
-
-      // Cover - penuhi canvas dengan video, pangkas jika perlu
-      if (videoRatio > canvasRatio) {
-        sHeight = videoElement.videoHeight;
-        sWidth = sHeight * canvasRatio;
-        sx = (videoElement.videoWidth - sWidth) / 2;
-        sy = 0;
-      } else {
-        sWidth = videoElement.videoWidth;
-        sHeight = sWidth / canvasRatio;
-        sy = (videoElement.videoHeight - sHeight) / 2;
-        sx = 0;
-      }
-      dx = 0;
-      dy = 0;
-      dWidth = offscreenCanvas.width;
-      dHeight = offscreenCanvas.height;
-
-      ctx.drawImage(videoElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-
-      // 2. Gambar output WebGL (stiker AR) di atas video
-      ctx.drawImage(glCanvas, 0, 0);
-
-      const dataURL = offscreenCanvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = dataURL;
-      link.download = 'ar-photo.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      if (statusEl) statusEl.textContent = 'Photo saved!';
-    } catch (error) {
-      console.error('Failed to draw canvas or save photo:', error);
-      if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
+  function takePhoto() {
+    if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video) {
+      console.error('Renderer, canvas, or video not available');
+      return;
     }
-  });
-}
+    const glCanvas = mindarThree.renderer.domElement; // Canvas WebGL dengan stiker AR
+    const videoElement = mindarThree.video; // Elemen video kamera
+
+    requestAnimationFrame(() => {
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = glCanvas.width;
+      offscreenCanvas.height = glCanvas.height;
+      const ctx = offscreenCanvas.getContext('2d');
+
+      try {
+        const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
+        const canvasRatio = offscreenCanvas.width / offscreenCanvas.height;
+
+        let sx, sy, sWidth, sHeight;
+        let dx, dy, dWidth, dHeight;
+
+        if (videoRatio > canvasRatio) {
+          sHeight = videoElement.videoHeight;
+          sWidth = sHeight * canvasRatio;
+          sx = (videoElement.videoWidth - sWidth) / 2;
+          sy = 0;
+        } else {
+          sWidth = videoElement.videoWidth;
+          sHeight = sWidth / canvasRatio;
+          sy = (videoElement.videoHeight - sHeight) / 2;
+          sx = 0;
+        }
+        dx = 0;
+        dy = 0;
+        dWidth = offscreenCanvas.width;
+        dHeight = offscreenCanvas.height;
+
+        ctx.drawImage(videoElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+        ctx.drawImage(glCanvas, 0, 0);
+
+        const dataURL = offscreenCanvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = 'ar-photo.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        if (statusEl) statusEl.textContent = 'Photo saved!';
+      } catch (error) {
+        console.error('Failed to draw canvas or save photo:', error);
+        if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
+      }
+    });
+  }
   
   function startVideoRecording() {
-    if (!mindarThree || !mindarThree.video || isRecording) return;
-    const stream = mindarThree.video.captureStream();
+    if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video || isRecording) return;
+    
+    // Hapus loop rendering yang ada jika ada
+    if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
+
+    // Buat kanvas tersembunyi untuk perekaman
+    recordingCanvas = document.createElement('canvas');
+    recordingCanvas.width = mindarThree.renderer.domElement.width;
+    recordingCanvas.height = mindarThree.renderer.domElement.height;
+    recordingCtx = recordingCanvas.getContext('2d');
+    
+    // Buat stream dari kanvas yang baru
+    const stream = recordingCanvas.captureStream(30); // 30 FPS
     recordedBlobs = [];
+    
     try {
       mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
     } catch (e) {
@@ -338,6 +347,7 @@ function takePhoto() {
       if (statusEl) statusEl.textContent = 'Video recording not supported.';
       return;
     }
+    
     mediaRecorder.onstop = (event) => {
       console.log('Recorder stopped:', event);
       const superBuffer = new Blob(recordedBlobs, { type: 'video/webm' });
@@ -350,12 +360,43 @@ function takePhoto() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(videoURL);
       if (statusEl) statusEl.textContent = 'Video saved!';
+
+      // Mulai kembali loop rendering Three.js utama
+      if (renderer && renderer.setAnimationLoop) {
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+          updateSelectionOverlay();
+          updateStickerPositions();
+        });
+      }
+      
+      // Bersihkan kanvas perekaman dan loop
+      recordingCanvas = null;
+      recordingCtx = null;
+      if (videoRecordLoop) videoRecordLoop = null;
     };
     mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         recordedBlobs.push(event.data);
       }
     };
+    
+    // Loop baru untuk menggambar video dan AR ke kanvas perekaman
+    const glCanvas = mindarThree.renderer.domElement;
+    const videoElement = mindarThree.video;
+    function drawFrame() {
+      // Gambar video kamera sebagai latar belakang
+      recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
+      // Gambar output WebGL (stiker) di atasnya
+      recordingCtx.drawImage(glCanvas, 0, 0);
+      
+      // Render scene MindAR/Three.js
+      renderer.render(scene, camera);
+
+      videoRecordLoop = requestAnimationFrame(drawFrame);
+    }
+    videoRecordLoop = requestAnimationFrame(drawFrame);
+
     mediaRecorder.start();
     isRecording = true;
     captureBtn.textContent = '⏹️ Stop';
@@ -367,7 +408,11 @@ function takePhoto() {
     if (!isRecording || !mediaRecorder) return;
     mediaRecorder.stop();
     isRecording = false;
-    captureBtn.textContent = 'Capture';
+    captureBtn.textContent = 'Record';
+    if (videoRecordLoop) {
+      cancelAnimationFrame(videoRecordLoop);
+      videoRecordLoop = null;
+    }
     console.log('Video recording stopped');
   }
 
@@ -744,6 +789,7 @@ function takePhoto() {
     }
   } catch (_) {}
 
+  // Ubah loop rendering utama
   if (renderer && renderer.setAnimationLoop) {
     renderer.setAnimationLoop(() => { 
       try {
