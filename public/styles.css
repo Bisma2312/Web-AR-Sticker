@@ -444,3 +444,86 @@ canvas#editorCanvas {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* --- NEW CSS for Toggle Switch & Controls Container --- */
+.controls-container {
+  position: fixed;
+  bottom: 100px; 
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px; 
+  z-index: 9;
+}
+
+.toggle-switch-container {
+  pointer-events: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 160px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  box-sizing: border-box;
+  pointer-events: auto;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.toggle-switch input[type="radio"] {
+  display: none;
+}
+
+.toggle-switch label {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 1;
+  transition: color 0.3s ease;
+  padding: 0 10px;
+}
+      
+.toggle-switch label svg {
+  width: 24px;
+  height: 24px;
+  fill: white;
+  margin-right: 8px;
+}
+
+/* Slider yang bergerak */
+.toggle-switch .slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 76px;
+  height: 40px;
+  background: white;
+  border-radius: 20px;
+  transition: transform 0.3s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Pindahkan slider saat "video" dipilih */
+.toggle-switch input[id="video-mode"]:checked ~ .slider {
+  transform: translateX(76px);
+}
+
+/* Ubah warna teks saat aktif */
+.toggle-switch input[id="photo-mode"]:checked + label {
+  color: #0f172a;
+}
+.toggle-switch input[id="video-mode"]:checked ~ label[for="video-mode"] {
+  color: #0f172a;
+}
