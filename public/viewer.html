@@ -17,6 +17,7 @@
       .chip.button:active { transform: translateY(0px); background: #4b5563; }
       .chip.button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
       .chip.button:disabled:hover { background: #1f2937; transform: none; }
+      .chip.button.active { border-color: #60a5fa; color: #60a5fa; }
       .tray { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 12px 18px; display:flex; gap:12px; justify-content:center; align-items:flex-end; background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.85) 35%, rgba(15,23,42,0.95) 100%); overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .thumb { display:flex; flex-direction:column; align-items:center; gap:6px; background: transparent; border: none; cursor: pointer; }
       .thumb .img { width: 60px; height: 60px; border-radius: 50%; overflow: hidden; background: #0b1020; border: 2px solid #374151; box-shadow: 0 6px 16px rgba(0,0,0,0.45); transition: transform .15s ease; }
@@ -45,6 +46,8 @@
       <div class="chip">AR Viewer</div>
       <div style="display:flex; gap:8px; align-items:center; pointer-events:auto;">
         <button id="cam-btn" class="chip button">Switch Cam</button>
+        <button id="mode-toggle-btn" class="chip button">📷</button>
+        <button id="capture-btn" class="chip primary button">Capture</button>
         <div id="status" class="chip">Loading...</div>
       </div>
     </div>
@@ -64,4 +67,4 @@
     </div>
     <script src="/viewer.js"></script>
   </body>
-  </html>
+</html>

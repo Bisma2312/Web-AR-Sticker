@@ -24,6 +24,15 @@
   // Track current facing mode (front/user or rear/environment)
   let currentFacingMode = useRear ? 'environment' : 'user';
 
+  // State untuk mode foto/video
+  let currentMode = 'photo'; // 'photo' atau 'video'
+  let isRecording = false;
+  let mediaRecorder;
+  let recordedBlobs;
+
+  const modeToggleBtn = document.getElementById('mode-toggle-btn');
+  const captureBtn = document.getElementById('capture-btn');
+
   // Mobile camera setup and permissions
   async function setupMobileCamera(facingMode = currentFacingMode) {
     if (!isMobile) return true;
@@ -356,6 +365,112 @@
     }
   } catch(e) {
     console.error('Error setting up camera button:', e);
+  }
+
+  // Fungsionalitas Photo/Video
+  function takePhoto() {
+    if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement) {
+      console.error('Renderer or canvas not available');
+      return;
+    }
+
+    const canvas = mindarThree.renderer.domElement;
+    const photoURL = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = photoURL;
+    link.download = 'ar-photo.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    console.log('Photo saved!');
+    if (statusEl) statusEl.textContent = 'Photo saved!';
+  }
+
+  function startVideoRecording() {
+    if (!mindarThree || !mindarThree.video || isRecording) return;
+  
+    const stream = mindarThree.video.captureStream();
+    recordedBlobs = [];
+  
+    try {
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+    } catch (e) {
+      console.error('Exception while creating MediaRecorder:', e);
+      if (statusEl) statusEl.textContent = 'Video recording not supported.';
+      return;
+    }
+  
+    mediaRecorder.onstop = (event) => {
+      console.log('Recorder stopped:', event);
+      const superBuffer = new Blob(recordedBlobs, { type: 'video/webm' });
+      const videoURL = window.URL.createObjectURL(superBuffer);
+    
+      const link = document.createElement('a');
+      link.href = videoURL;
+      link.download = 'ar-video.webm';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(videoURL);
+      if (statusEl) statusEl.textContent = 'Video saved!';
+    };
+  
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        recordedBlobs.push(event.data);
+      }
+    };
+  
+    mediaRecorder.start();
+    isRecording = true;
+    captureBtn.textContent = '⏹️ Stop';
+    if (statusEl) statusEl.textContent = 'Recording...';
+    console.log('Video recording started');
+  }
+
+  function stopVideoRecording() {
+    if (!isRecording || !mediaRecorder) return;
+    mediaRecorder.stop();
+    isRecording = false;
+    captureBtn.textContent = 'Capture';
+    console.log('Video recording stopped');
+  }
+
+  // Wire mode toggle button
+  if (modeToggleBtn) {
+    modeToggleBtn.addEventListener('click', () => {
+      if (isRecording) {
+        stopVideoRecording();
+      }
+      
+      if (currentMode === 'photo') {
+        currentMode = 'video';
+        modeToggleBtn.textContent = '📹';
+        if (statusEl) statusEl.textContent = 'Mode: Video';
+      } else {
+        currentMode = 'photo';
+        modeToggleBtn.textContent = '📷';
+        if (statusEl) statusEl.textContent = 'Mode: Photo';
+      }
+      console.log('Mode switched to:', currentMode);
+      // Update capture button text based on mode
+      captureBtn.textContent = currentMode === 'photo' ? 'Capture' : 'Record';
+    });
+  }
+
+  // Wire capture button
+  if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+      if (currentMode === 'photo') {
+        takePhoto();
+      } else { // 'video' mode
+        if (isRecording) {
+          stopVideoRecording();
+        } else {
+          startVideoRecording();
+        }
+      }
+    });
   }
 
   // Utility: SVG -> CanvasTexture for crisp scaling
