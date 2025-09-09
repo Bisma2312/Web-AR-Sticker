@@ -9,8 +9,9 @@
   const statusEl = document.getElementById('status');
   const container = document.getElementById('ar');
   const captureBtn = document.getElementById('capture-btn');
-  const photoBtn = document.getElementById('photo-btn');
-  const videoBtn = document.getElementById('video-btn');
+  const photoModeBtn = document.getElementById('photo-mode-btn');
+  const videoModeBtn = document.getElementById('video-mode-btn');
+  const camBtn = document.getElementById('cam-btn');
   
   if (!id || !t) { 
     if (statusEl) statusEl.textContent = 'Missing token'; 
@@ -26,6 +27,7 @@
 
   let mindarThree = null;
   let currentFacingMode = cam === 'rear' ? 'environment' : 'user';
+  let currentCaptureMode = 'photo'; // 'photo' atau 'video'
   
   // --- Video Recording Variables ---
   let mediaRecorder = null;
@@ -233,88 +235,99 @@
     }
   }
 
-  // --- Camera & Capture Button Handlers ---
-  
-  // Photo capture logic
-  if (photoBtn) {
-      photoBtn.addEventListener('click', () => {
-          if (!mindarThree || !mindarThree.renderer) {
-              if (statusEl) statusEl.textContent = 'AR Engine not ready!';
-              return;
-          }
-          const canvas = mindarThree.renderer.domElement;
-          const url = canvas.toDataURL('image/png');
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `ar-photo-${new Date().toISOString()}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          if (statusEl) statusEl.textContent = 'Photo captured!';
-      });
+  // --- Button & Capture Handlers ---
+
+  // Handle mode switching
+  function setCaptureMode(mode) {
+    if (isRecording) {
+      if (statusEl) statusEl.textContent = 'Sedang merekam. Hentikan dulu video.';
+      return;
+    }
+    currentCaptureMode = mode;
+    if (mode === 'photo') {
+      captureBtn.classList.remove('video-mode');
+      photoModeBtn.classList.add('active');
+      videoModeBtn.classList.remove('active');
+      if (statusEl) statusEl.textContent = 'Mode: Foto';
+    } else { // video mode
+      captureBtn.classList.add('video-mode');
+      photoModeBtn.classList.remove('active');
+      videoModeBtn.classList.add('active');
+      if (statusEl) statusEl.textContent = 'Mode: Video';
+    }
   }
 
-  // Video recording logic
-  if (captureBtn && videoBtn) {
-      captureBtn.addEventListener('click', () => {
-          if (isRecording) {
-              // Stop recording
-              mediaRecorder.stop();
-              isRecording = false;
-              captureBtn.classList.remove('recording');
-              if (statusEl) statusEl.textContent = 'Video stopped. Processing...';
-          } else {
-              // Start recording
-              if (!mindarThree || !mindarThree.renderer) {
-                  if (statusEl) statusEl.textContent = 'AR Engine not ready!';
-                  return;
+  if (photoModeBtn) {
+    photoModeBtn.addEventListener('click', () => setCaptureMode('photo'));
+  }
+
+  if (videoModeBtn) {
+    videoModeBtn.addEventListener('click', () => setCaptureMode('video'));
+  }
+
+  // Handle capture button click
+  if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+      if (!mindarThree || !mindarThree.renderer) {
+        if (statusEl) statusEl.textContent = 'AR Engine not ready!';
+        return;
+      }
+
+      if (currentCaptureMode === 'photo') {
+        // Photo capture logic
+        const canvas = mindarThree.renderer.domElement;
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ar-photo-${new Date().toISOString()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (statusEl) statusEl.textContent = 'Foto disimpan!';
+      } else { // Video mode
+        if (isRecording) {
+          // Stop recording
+          mediaRecorder.stop();
+          isRecording = false;
+          captureBtn.classList.remove('recording');
+          if (statusEl) statusEl.textContent = 'Merekam berhenti. Memproses...';
+        } else {
+          // Start recording
+          const canvas = mindarThree.renderer.domElement;
+          const stream = canvas.captureStream(30); // Capture at 30 fps
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+          videoChunks = [];
+
+          mediaRecorder.ondataavailable = event => {
+              if (event.data.size > 0) {
+                  videoChunks.push(event.data);
               }
-              const canvas = mindarThree.renderer.domElement;
-              const stream = canvas.captureStream(30); // Capture at 30 fps
-              mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-              videoChunks = [];
+          };
 
-              mediaRecorder.ondataavailable = event => {
-                  if (event.data.size > 0) {
-                      videoChunks.push(event.data);
-                  }
-              };
+          mediaRecorder.onstop = () => {
+              const blob = new Blob(videoChunks, { type: 'video/webm' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `ar-video-${new Date().toISOString()}.webm`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              if (statusEl) statusEl.textContent = 'Video disimpan!';
+          };
 
-              mediaRecorder.onstop = () => {
-                  const blob = new Blob(videoChunks, { type: 'video/webm' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `ar-video-${new Date().toISOString()}.webm`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                  if (statusEl) statusEl.textContent = 'Video saved!';
-              };
-
-              mediaRecorder.start();
-              isRecording = true;
-              captureBtn.classList.add('recording');
-              if (statusEl) statusEl.textContent = 'Recording video...';
-          }
-      });
-      
-      // Toggle capture mode (Photo/Video)
-      videoBtn.addEventListener('click', () => {
-        // Here, you could add logic to switch between photo and video capture modes,
-        // for example by hiding one button and showing the other.
-        // For simplicity, we'll assume the big button is for video, and the others are separate.
-        // The HTML already shows them as separate buttons. So, this button could be used to toggle a feature.
-        // For now, let's just log a message.
-        if (statusEl) statusEl.textContent = 'Video mode active';
-        console.log("Video mode button clicked!");
-      });
+          mediaRecorder.start();
+          isRecording = true;
+          captureBtn.classList.add('recording');
+          if (statusEl) statusEl.textContent = 'Sedang merekam video...';
+        }
+      }
+    });
   }
 
   // Camera toggle button handler
   try {
-    const camBtn = document.getElementById('cam-btn');
     if (camBtn) {
       function updateLabel() {
         camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam';
