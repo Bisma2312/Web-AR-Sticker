@@ -24,7 +24,7 @@
   let mindarThree = null;
   let currentFacingMode = cam === 'rear' ? 'environment' : 'user';
 
-  // --- Utility Functions ---
+  // --- Utility Functions (Cleaned) ---
   function checkWebGLSupport() {
     try {
       const canvas = document.createElement('canvas');
@@ -44,10 +44,8 @@
     hat: { name: 'Hat', anchor: 10, size: [1.0, 0.6], src: '/stickers/hat.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     uploaded: { name: 'Uploaded', anchor: 168, size: [0.4, 0.4], src: imgUrl, mobileOffset: { x: 0, y: 0, z: 0.02 } }
   };
-
-  const loader = new THREE.TextureLoader();
-  if (loader && loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
-  if (THREE && THREE.Cache) THREE.Cache.enabled = true;
+  
+  let loader = null;
   const rasterTextureCache = new Map();
   const svgTextureCache = new Map();
   const preloadedImageCache = new Map();
@@ -55,7 +53,7 @@
   const preloadImage = (url) => new Promise((resolve, reject) => {
     if (!url) { reject(new Error('No URL provided')); return; }
     const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => { preloadedImageCache.set(url, img); resolve(img); };
+    img.onload = () => { console.log('Image preloaded successfully:', url); preloadedImageCache.set(url, img); resolve(img); };
     img.onerror = (error) => { console.error('Failed to preload image:', url, error); reject(new Error('Image load failed')); };
     img.src = url;
   });
@@ -65,6 +63,7 @@
   };
 
   async function getRasterTextureCached(url) {
+    if (!loader) throw new Error('THREE.TextureLoader not initialized');
     if (rasterTextureCache.has(url)) return rasterTextureCache.get(url);
     let img = preloadedImageCache.get(url);
     if (!img) { try { img = await preloadImage(url); } catch (_) { img = null; } }
@@ -92,36 +91,20 @@
     return tex;
   }
 
-  // --- Main AR Logic ---
+  // --- Main AR Logic (Cleaned) ---
   const instances = {};
   let zCounter = 1;
-  let active = null;
 
   async function ensureInstance(key) {
     if (instances[key]) return instances[key];
-    const def = stickers[key];
-    if (!def || !def.src) return null;
-    
-    // Pastikan MindAR sudah terinisialisasi
-    if (!mindarThree) {
-      console.error('mindarThree instance is not available.');
-      return null;
-    }
-    
+    const def = stickers[key]; if (!def || !def.src) return null;
     const anchor = mindarThree.addAnchor(def.anchor);
-    
     let texture;
-    try {
-      if (def.src.endsWith('.svg')) {
-        texture = await getSvgTextureCached(def.src);
-      } else {
-        texture = await getRasterTextureCached(def.src);
-      }
-    } catch (e) {
-      console.error('Failed to get sticker texture:', e);
-      return null;
+    if (def.src.endsWith('.svg')) {
+      texture = await getSvgTextureCached(def.src);
+    } else {
+      texture = await getRasterTextureCached(def.src);
     }
-
     const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
     const mesh = new THREE.Mesh(geo, mat);
@@ -129,21 +112,20 @@
     mesh.renderOrder = zCounter++;
     mesh.visible = false;
     anchor.group.add(mesh);
-    
     const inst = { key, def, anchor, mesh, visible: false, scale: 1, rotation: 0, offset: { x: 0, y: 0 } };
     instances[key] = inst;
     return inst;
   }
 
   function applyTransforms(inst) {
-    if (!inst || !inst.mesh) return;
     const m = inst.mesh;
     m.scale.setScalar(inst.scale);
     m.rotation.set(0, 0, inst.rotation);
     m.position.set(inst.offset.x, inst.offset.y, 0);
   }
 
-  // --- UI and Gestures ---
+  // --- UI and Gestures (Cleaned) ---
+  let active = null;
   const trayBtns = document.querySelectorAll('.tray .thumb');
   trayBtns.forEach(btn => {
     const key = btn.getAttribute('data-add');
@@ -173,10 +155,7 @@
     
     btn.addEventListener('click', async () => {
       const inst = await ensureInstance(key);
-      if (!inst) {
-        console.error('Failed to ensure sticker instance.');
-        return;
-      }
+      if (!inst) return;
       inst.visible = true; 
       inst.mesh.visible = true; 
       active = key;
@@ -205,6 +184,11 @@
         throw new Error('MindAR failed to initialize properly');
       }
       
+      // Inisialisasi THREE.TextureLoader di sini, setelah Three.js dimuat
+      loader = new THREE.TextureLoader();
+      if (loader && loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
+      if (THREE && THREE.Cache) THREE.Cache.enabled = true;
+
       const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1); 
       scene.add(light);
 
@@ -217,7 +201,7 @@
         renderer.setAnimationLoop(() => { 
           if (renderer && scene && camera) {
             renderer.render(scene, camera); 
-            if (active && instances[active]) {
+            if (active && instances[active] && instances[active].mesh) {
               applyTransforms(instances[active]);
             }
           }
@@ -271,7 +255,7 @@
     console.error('Error setting up camera button:', e);
   }
 
-  // Panggil fungsi utama
+  // Panggil fungsi utama di bagian paling bawah file
   const initialConfig = {
     container,
     maxFaces: 1,
