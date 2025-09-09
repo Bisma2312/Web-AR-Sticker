@@ -9,9 +9,9 @@
   const statusEl = document.getElementById('status');
   const container = document.getElementById('ar');
   const captureBtn = document.getElementById('capture-btn');
-  const photoModeBtn = document.getElementById('photo-mode-btn');
-  const videoModeBtn = document.getElementById('video-mode-btn');
   const camBtn = document.getElementById('cam-btn');
+  const photoModeRadio = document.getElementById('photo-mode');
+  const videoModeRadio = document.getElementById('video-mode');
   
   if (!id || !t) { 
     if (statusEl) statusEl.textContent = 'Missing token'; 
@@ -22,7 +22,7 @@
     return; 
   }
 
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+  const isMobile = /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
 
   let mindarThree = null;
@@ -237,32 +237,33 @@
 
   // --- Button & Capture Handlers ---
 
-  // Handle mode switching
-  function setCaptureMode(mode) {
-    if (isRecording) {
-      if (statusEl) statusEl.textContent = 'Sedang merekam. Hentikan dulu video.';
-      return;
-    }
-    currentCaptureMode = mode;
-    if (mode === 'photo') {
-      captureBtn.classList.remove('video-mode');
-      photoModeBtn.classList.add('active');
-      videoModeBtn.classList.remove('active');
-      if (statusEl) statusEl.textContent = 'Mode: Foto';
-    } else { // video mode
-      captureBtn.classList.add('video-mode');
-      photoModeBtn.classList.remove('active');
-      videoModeBtn.classList.add('active');
-      if (statusEl) statusEl.textContent = 'Mode: Video';
-    }
-  }
+  // Initial setup for capture mode
+  if (photoModeRadio && videoModeRadio) {
+      // Set initial state
+      if (photoModeRadio.checked) {
+          currentCaptureMode = 'photo';
+          if (statusEl) statusEl.textContent = 'Mode: Foto';
+      } else if (videoModeRadio.checked) {
+          currentCaptureMode = 'video';
+          captureBtn.classList.add('video-mode');
+          if (statusEl) statusEl.textContent = 'Mode: Video';
+      }
 
-  if (photoModeBtn) {
-    photoModeBtn.addEventListener('click', () => setCaptureMode('photo'));
-  }
-
-  if (videoModeBtn) {
-    videoModeBtn.addEventListener('click', () => setCaptureMode('video'));
+      // Add event listeners for mode change
+      photoModeRadio.addEventListener('change', () => {
+          if (photoModeRadio.checked) {
+              currentCaptureMode = 'photo';
+              captureBtn.classList.remove('video-mode');
+              if (statusEl) statusEl.textContent = 'Mode: Foto';
+          }
+      });
+      videoModeRadio.addEventListener('change', () => {
+          if (videoModeRadio.checked) {
+              currentCaptureMode = 'video';
+              captureBtn.classList.add('video-mode');
+              if (statusEl) statusEl.textContent = 'Mode: Video';
+          }
+      });
   }
 
   // Handle capture button click

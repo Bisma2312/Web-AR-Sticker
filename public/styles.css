@@ -444,3 +444,82 @@ canvas#editorCanvas {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* --- NEW CSS for Toggle Switch --- */
+.toggle-switch-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 80px; /* Adjust this position as needed */
+  display: flex;
+  justify-content: center;
+  z-index: 10; /* Ensure it's above other elements */
+  pointer-events: none; /* So other elements below can be clicked */
+}
+
+.toggle-switch {
+  position: relative;
+  width: 160px; /* Lebar total switch */
+  height: 48px; /* Tinggi switch */
+  background: rgba(255, 255, 255, 0.2); /* Latar belakang switch */
+  border-radius: 24px; /* Setengah dari tinggi untuk bentuk kapsul */
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  box-sizing: border-box;
+  pointer-events: auto; /* Make switch clickable */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.toggle-switch input[type="radio"] {
+  display: none; /* Sembunyikan input radio asli */
+}
+
+.toggle-switch label {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 1; /* Agar teks di atas slider */
+  transition: color 0.3s ease;
+  padding: 0 10px; /* Padding untuk ikon/teks */
+}
+      
+.toggle-switch label svg {
+  width: 24px; /* Ukuran ikon */
+  height: 24px;
+  fill: white; /* Warna ikon default */
+  margin-right: 8px; /* Jarak antara ikon dan teks (jika ada) */
+}
+
+/* Slider yang bergerak */
+.toggle-switch .slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 76px; /* (Lebar Switch - 2*Padding) / 2 */
+  height: 40px; /* Tinggi Switch - 2*Padding */
+  background: white;
+  border-radius: 20px; /* Setengah dari tinggi slider */
+  transition: transform 0.3s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Pindahkan slider saat "video" dipilih */
+.toggle-switch input[id="video-mode"]:checked ~ .slider {
+  transform: translateX(76px); /* Pindah sejauh lebar slider */
+}
+
+/* Ubah warna teks saat aktif */
+.toggle-switch input[id="photo-mode"]:checked + label {
+  color: #0f172a; /* Warna teks saat aktif */
+}
+
+.toggle-switch input[id="video-mode"]:checked ~ label[for="video-mode"] {
+  color: #0f172a; /* Warna teks saat aktif */
+}
+/* --- END NEW CSS --- */

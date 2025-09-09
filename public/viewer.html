@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script>
 
-
     <style>
       body { margin: 0; background: #0f172a; color: #e5e7eb; }
       #ar { position: fixed; inset: 0; touch-action: none; }
@@ -74,22 +73,6 @@
         background-color: #ff0000;
         animation: pulse 1.5s infinite;
       }
-
-      /* Styling untuk tombol mode kecil */
-      .mode-btn {
-        width: 50px;
-        height: 50px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid white;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-      .mode-btn.active {
-        background: white;
-      }
     </style>
   </head>
   <body>
@@ -102,19 +85,30 @@
       </div>
     </div>
     
+    <div class="toggle-switch-container">
+      <div class="toggle-switch">
+        <input type="radio" id="photo-mode" name="capture-mode" value="photo" checked>
+        <label for="photo-mode">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12,18.5A2.5,2.5 0 0,1 9.5,16A2.5,2.5 0 0,1 12,13.5A2.5,2.5 0 0,1 14.5,16A2.5,2.5 0 0,1 12,18.5M12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,4M12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6M16,16A4,4 0 0,0 12,12A4,4 0 0,0 8,16A4,4 0 0,0 12,20A4,4 0 0,0 16,16Z" />
+            </svg>
+            Photo
+        </label>
+
+        <input type="radio" id="video-mode" name="capture-mode" value="video">
+        <label for="video-mode">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M16.5,12A2.5,2.5 0 0,0 14,9.5A2.5,2.5 0 0,0 11.5,12A2.5,2.5 0 0,0 14,14.5A2.5,2.5 0 0,0 16.5,12M14,6A6,6 0 0,0 8,12A6,6 0 0,0 14,18A6,6 0 0,0 20,12A6,6 0 0,0 14,6M14,4A8,8 0 0,1 22,12A8,8 0 0,1 14,20A8,8 0 0,1 6,12A8,8 0 0,1 14,4Z" />
+            </svg>
+            Video
+        </label>
+        <div class="slider"></div>
+      </div>
+    </div>
+    
     <div style="position:fixed; left:0; right:0; bottom:120px; display:flex; justify-content:center; align-items:center; gap:24px;">
-      <button id="photo-mode-btn" class="mode-btn active">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="white">
-          <path d="M12,18.5A2.5,2.5 0 0,1 9.5,16A2.5,2.5 0 0,1 12,13.5A2.5,2.5 0 0,1 14.5,16A2.5,2.5 0 0,1 12,18.5M12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,4M12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6M16,16A4,4 0 0,0 12,12A4,4 0 0,0 8,16A4,4 0 0,0 12,20A4,4 0 0,0 16,16Z" />
-        </svg>
-      </button>
       <button id="capture-btn" class="capture-btn">
         <div class="inner-part"></div>
-      </button>
-      <button id="video-mode-btn" class="mode-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="white">
-          <path d="M16.5,12A2.5,2.5 0 0,0 14,9.5A2.5,2.5 0 0,0 11.5,12A2.5,2.5 0 0,0 14,14.5A2.5,2.5 0 0,0 16.5,12M14,6A6,6 0 0,0 8,12A6,6 0 0,0 14,18A6,6 0 0,0 20,12A6,6 0 0,0 14,6M14,4A8,8 0 0,1 22,12A8,8 0 0,1 14,20A8,8 0 0,1 6,12A8,8 0 0,1 14,4Z" />
-        </svg>
       </button>
     </div>
 
