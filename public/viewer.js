@@ -1,5 +1,5 @@
 // AR Viewer with in-AR sticker editing via direct tap and overlay handles
-(async function() {
+document.addEventListener('DOMContentLoaded', async () => {
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
   const t = qs.get('t');
@@ -53,13 +53,13 @@
   const preloadImage = (url) => new Promise((resolve, reject) => {
     if (!url) { reject(new Error('No URL provided')); return; }
     const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => { console.log('Image preloaded successfully:', url); preloadedImageCache.set(url, img); resolve(img); };
-    img.onerror = (error) => { console.error('Failed to preload image:', url, error); reject(new Error('Image load failed')); };
+    img.onload = () => { preloadedImageCache.set(url, img); resolve(img); };
+    img.onerror = (error) => { reject(new Error('Image load failed')); };
     img.src = url;
   });
 
   const loadImageSafely = async (url) => {
-    try { await preloadImage(url); return true; } catch (error) { console.warn('Image load warning:', error); return false; }
+    try { await preloadImage(url); return true; } catch (error) { return false; }
   };
 
   async function getRasterTextureCached(url) {
@@ -162,7 +162,6 @@
       if (statusEl) {
         statusEl.textContent = `${inst.def.name} added`;
       }
-      console.log(`Sticker '${key}' added. Mesh visibility:`, inst.mesh.visible);
     });
   });
 
@@ -193,7 +192,6 @@
       scene.add(light);
 
       await mindarThree.start();
-      console.log('MindAR start() successful!');
 
       if (statusEl) statusEl.textContent = 'Tracking face...';
 
@@ -227,7 +225,6 @@
       
       camBtn.addEventListener('click', async () => {
         if (!mindarThree || !mindarThree.arSystem || camBtn.disabled) {
-            console.warn('Tombol ditekan, tetapi MindAR tidak siap. Objek MindAR:', mindarThree);
             if (statusEl) statusEl.textContent = 'Memuat... Tunggu sebentar.';
             return;
         }
@@ -244,7 +241,6 @@
           updateLabel();
           
         } catch (error) {
-          console.error('Peralihan kamera gagal:', error);
           if (statusEl) statusEl.textContent = `Peralihan kamera gagal: ${error.message}`;
         }
         
@@ -272,4 +268,4 @@
   };
 
   startAR(initialConfig);
-})();
+});
