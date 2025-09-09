@@ -136,8 +136,8 @@
       uiScanning: false, // Disable default UI for custom implementation
       uiLoading: false,
       uiError: false,
-      // **PERBAIKAN FOTO: Tambahkan opsi ini untuk mempertahankan buffer kanvas**
-      rendererOptions: { preserveDrawingBuffer: true },
+      // **PERBAIKAN FOTO: Hapus opsi ini karena tidak berfungsi andal di semua peramban**
+      // rendererOptions: { preserveDrawingBuffer: true },
       // Mobile-specific camera settings with improved constraints
       camera: {
         facingMode: { ideal: currentFacingMode }, // Use ideal for better compatibility
@@ -370,31 +370,39 @@
     console.error('Error setting up camera button:', e);
   }
 
-  // Fungsionalitas Photo/Video
+  // **PERBAIKAN UTAMA: Mengganti fungsi takePhoto()**
   function takePhoto() {
     if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement) {
       console.error('Renderer or canvas not available');
       return;
     }
 
-    const canvas = mindarThree.renderer.domElement;
-    const photoURL = canvas.toDataURL('image/png');
+    const glCanvas = mindarThree.renderer.domElement;
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = glCanvas.width;
+    offscreenCanvas.height = glCanvas.height;
     
-    // Cek apakah data URL kosong (kemungkinan besar karena masalah buffer)
-    if (photoURL.length < 100) {
-      console.warn('The generated photo URL appears to be empty or invalid.');
-      if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
-      return;
+    const ctx = offscreenCanvas.getContext('2d');
+    
+    try {
+        ctx.drawImage(glCanvas, 0, 0);
+        const photoURL = offscreenCanvas.toDataURL('image/png');
+        
+        // Buat link untuk mendownload gambar
+        const link = document.createElement('a');
+        link.href = photoURL;
+        link.download = 'ar-photo.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log('Photo saved!');
+        if (statusEl) statusEl.textContent = 'Photo saved!';
+    } catch (error) {
+        console.error('Failed to draw canvas or save photo:', error);
+        if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
     }
-
-    const link = document.createElement('a');
-    link.href = photoURL;
-    link.download = 'ar-photo.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    console.log('Photo saved!');
-    if (statusEl) statusEl.textContent = 'Photo saved!';
+    
   }
 
   function startVideoRecording() {
