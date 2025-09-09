@@ -136,6 +136,8 @@
       uiScanning: false, // Disable default UI for custom implementation
       uiLoading: false,
       uiError: false,
+      // **PERBAIKAN FOTO: Tambahkan opsi ini untuk mempertahankan buffer kanvas**
+      rendererOptions: { preserveDrawingBuffer: true },
       // Mobile-specific camera settings with improved constraints
       camera: {
         facingMode: { ideal: currentFacingMode }, // Use ideal for better compatibility
@@ -260,6 +262,7 @@
         uiScanning: false,
         uiLoading: false,
         uiError: false,
+        rendererOptions: { preserveDrawingBuffer: true }, // **PERBAIKAN FOTO: Tambahkan opsi ini**
         camera: {
           facingMode: { ideal: currentFacingMode },
           width: { ideal: isMobile ? 640 : 1280 },
@@ -376,6 +379,14 @@
 
     const canvas = mindarThree.renderer.domElement;
     const photoURL = canvas.toDataURL('image/png');
+    
+    // Cek apakah data URL kosong (kemungkinan besar karena masalah buffer)
+    if (photoURL.length < 100) {
+      console.warn('The generated photo URL appears to be empty or invalid.');
+      if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
+      return;
+    }
+
     const link = document.createElement('a');
     link.href = photoURL;
     link.download = 'ar-photo.png';
