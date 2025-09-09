@@ -516,10 +516,16 @@
       updateLabel();
       
       camBtn.addEventListener('click', async () => {
-        if (!mindarThree || camBtn.disabled) return;
-        
-        camBtn.disabled = true;
-        camBtn.textContent = 'Switching...';
+        console.log('Button clicked. Current mindarThree state:', mindarThree);
+        if (!mindarThree || !mindarThree.arSystem || camBtn.disabled) {
+          console.warn("MindAR tidak siap atau objek AR System hilang.");
+        if (statusEl) statusEl.textContent = 'Memuat... Tunggu sebentar.';
+        camBtn.disabled = false;
+        return;
+  }
+  
+  camBtn.disabled = true;
+  camBtn.textContent = 'Switching...';
         
         try {
           await mindarThree.arSystem.switchCamera();
