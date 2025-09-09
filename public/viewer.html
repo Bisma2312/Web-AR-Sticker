@@ -14,81 +14,71 @@
       .chip { pointer-events: auto; padding: 6px 10px; border-radius: 12px; background: #1f2937; border: 1px solid #374151; transition: all 0.2s ease; }
       .chip:hover { background: #374151; transform: translateY(-1px); }
       .chip.button { cursor: pointer; user-select: none; }
-      .chip.button:active { transform: translateY(0); }
-      .tray { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 12px; justify-content: center; padding: 16px; background: rgba(15,23,42,0.8); backdrop-filter: blur(8px); pointer-events: none; }
-      .tray .thumb { pointer-events: auto; width: 64px; height: 64px; background: #1f2937; border: 2px solid transparent; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; }
-      .tray .thumb.active { border-color: #60a5fa; transform: scale(1.1); }
-      .tray .thumb:hover { transform: scale(1.05); }
-      .tray .thumb.loading::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.6); animation: pulse 1.5s infinite ease-out; }
-      .tray .thumb.disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
-      .tray .thumb.bounce { animation: bounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-      .tray .thumb img, .tray .thumb svg { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
-      @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 0.8; } 100% { opacity: 0.5; } }
-      @keyframes bounce { 0% { transform: scale(1.1); } 50% { transform: scale(1.2); } 100% { transform: scale(1.1); } }
-      
-      #selection { position: fixed; top: 0; left: 0; right: 0; bottom: 0; border: 2px solid #60a5fa; box-sizing: content-box; pointer-events: none; }
-      #selection .handle { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: #60a5fa; border: 2px solid #0f172a; pointer-events: auto; display: grid; place-items: center; color: #0b1020; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+      .chip.button.active { background: #60a5fa; color: #0f172a; }
+
+      .tray {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        pointer-events: none;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+      }
+      .tray .thumb {
+        pointer-events: auto;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #111827;
+        border: 2px solid #374151;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        overflow: hidden;
+        padding: 8px;
+        display: grid;
+        place-items: center;
+      }
+      .tray .thumb:hover { transform: scale(1.1); }
+      .tray .thumb.active { border-color: #60a5fa; box-shadow: 0 0 8px #60a5fa; }
+      .tray .thumb.disabled { opacity: 0.5; pointer-events: none; }
+      .tray .thumb.loading { animation: pulse 1.5s infinite ease-in-out; }
+      @keyframes pulse { 0% { transform: scale(0.95); } 50% { transform: scale(1); } 100% { transform: scale(0.95); } }
+
+      .tray .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .tray .control-btn {
+        pointer-events: auto;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #1f2937;
+        border: 2px solid #60a5fa;
+        color: #e5e7eb;
+        font-size: 24px;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: all 0.2s ease;
+      }
+      .tray .control-btn:hover { background: #374151; }
+
+      #selection { position: fixed; pointer-events: none; z-index: 9999; border: 1px dashed rgba(255,255,255,0.6); }
+      #selection .handle { position: absolute; width: 28px; height: 28px; background: #60a5fa; border-radius: 50%; border: 2px solid #0f172a; pointer-events: auto; display: grid; place-items: center; color: #0b1020; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
       #selection .h-rotate { top: -14px; right: -14px; cursor: grab; }
       #selection .h-scale { bottom: -14px; right: -14px; cursor: nwse-resize; }
       #selection .bar { position: absolute; top: -40px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
       #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; font-size: 12px; }
-
-      /* PRATINJAU BARU */
-      #preview-container {
-        position: fixed;
-        inset: 0;
-        background: #0f172a;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 20px;
-        z-index: 100;
-        visibility: hidden;
-        opacity: 0;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
-      }
-
-      #preview-container.active {
-        visibility: visible;
-        opacity: 1;
-      }
-      
-      #preview-image {
-        max-width: 90%;
-        max-height: 80%;
-        object-fit: contain;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      }
-
-      .preview-buttons {
-        display: flex;
-        gap: 16px;
-      }
-      
-      .preview-buttons .button {
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-        border: none;
-        transition: transform 0.2s ease;
-      }
-
-      .preview-buttons .button:hover {
-        transform: translateY(-2px);
-      }
-
-      #download-btn {
-        background-color: #60a5fa;
-        color: #0b1020;
-      }
-
-      #retake-btn {
-        background-color: #374151;
-        color: #e5e7eb;
-      }
     </style>
   </head>
   <body>
@@ -100,29 +90,21 @@
         <div id="status" class="chip">Loading...</div>
       </div>
     </div>
+    
     <div class="tray">
+      <button id="mode-toggle-btn" class="control-btn">📷</button>
+      <button id="capture-btn" class="control-btn">Capture</button>
       <button class="thumb" data-add="glasses">
-        <div class="overlay"></div><img src="" alt="Glasses">
+        <img src="/stickers/glasses.svg" alt="Glasses" />
       </button>
       <button class="thumb" data-add="hat">
-        <div class="overlay"></div><img src="" alt="Hat">
+        <img src="/stickers/hat.svg" alt="Hat" />
       </button>
       <button class="thumb" data-add="uploaded">
-        <div class="overlay"></div><img src="" alt="Sticker">
-      </button>
-      <button id="mode-toggle-btn" class="thumb"><img src="" alt="Mode"></button>
-      <button id="capture-btn" class="thumb">
-        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/%3E%3C/svg%3E" alt="Capture">
+        <img src="/stickers/glasses.svg" alt="Uploaded Image" />
       </button>
     </div>
 
-    <div id="preview-container">
-      <img id="preview-image" src="" alt="Captured Photo">
-      <div class="preview-buttons">
-        <button id="retake-btn" class="button">Back to AR</button>
-        <button id="download-btn" class="button">Download</button>
-      </div>
-    </div>
+    <script src="/viewer.js"></script>
   </body>
-  <script src="/viewer.js"></script>
 </html>
