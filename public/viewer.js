@@ -24,7 +24,7 @@
   let mindarThree = null;
   let currentFacingMode = cam === 'rear' ? 'environment' : 'user';
 
-  // --- Utility Functions (Cleaned) ---
+  // --- Utility Functions ---
   function checkWebGLSupport() {
     try {
       const canvas = document.createElement('canvas');
@@ -44,8 +44,7 @@
     hat: { name: 'Hat', anchor: 10, size: [1.0, 0.6], src: '/stickers/hat.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     uploaded: { name: 'Uploaded', anchor: 168, size: [0.4, 0.4], src: imgUrl, mobileOffset: { x: 0, y: 0, z: 0.02 } }
   };
-  
-  // Cache and other functions as provided in your original file, but cleaned up
+
   const loader = new THREE.TextureLoader();
   if (loader && loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
   if (THREE && THREE.Cache) THREE.Cache.enabled = true;
@@ -56,7 +55,7 @@
   const preloadImage = (url) => new Promise((resolve, reject) => {
     if (!url) { reject(new Error('No URL provided')); return; }
     const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => { console.log('Image preloaded successfully:', url); preloadedImageCache.set(url, img); resolve(img); };
+    img.onload = () => { preloadedImageCache.set(url, img); resolve(img); };
     img.onerror = (error) => { console.error('Failed to preload image:', url, error); reject(new Error('Image load failed')); };
     img.src = url;
   });
@@ -93,20 +92,36 @@
     return tex;
   }
 
-  // --- Main AR Logic (Cleaned) ---
+  // --- Main AR Logic ---
   const instances = {};
   let zCounter = 1;
+  let active = null;
 
   async function ensureInstance(key) {
     if (instances[key]) return instances[key];
-    const def = stickers[key]; if (!def || !def.src) return null;
-    const anchor = mindarThree.addAnchor(def.anchor);
-    let texture;
-    if (def.src.endsWith('.svg')) {
-      texture = await getSvgTextureCached(def.src);
-    } else {
-      texture = await getRasterTextureCached(def.src);
+    const def = stickers[key];
+    if (!def || !def.src) return null;
+    
+    // Pastikan MindAR sudah terinisialisasi
+    if (!mindarThree) {
+      console.error('mindarThree instance is not available.');
+      return null;
     }
+    
+    const anchor = mindarThree.addAnchor(def.anchor);
+    
+    let texture;
+    try {
+      if (def.src.endsWith('.svg')) {
+        texture = await getSvgTextureCached(def.src);
+      } else {
+        texture = await getRasterTextureCached(def.src);
+      }
+    } catch (e) {
+      console.error('Failed to get sticker texture:', e);
+      return null;
+    }
+
     const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
     const mesh = new THREE.Mesh(geo, mat);
@@ -114,20 +129,21 @@
     mesh.renderOrder = zCounter++;
     mesh.visible = false;
     anchor.group.add(mesh);
+    
     const inst = { key, def, anchor, mesh, visible: false, scale: 1, rotation: 0, offset: { x: 0, y: 0 } };
     instances[key] = inst;
     return inst;
   }
 
   function applyTransforms(inst) {
+    if (!inst || !inst.mesh) return;
     const m = inst.mesh;
     m.scale.setScalar(inst.scale);
     m.rotation.set(0, 0, inst.rotation);
     m.position.set(inst.offset.x, inst.offset.y, 0);
   }
 
-  // --- UI and Gestures (Cleaned) ---
-  let active = null;
+  // --- UI and Gestures ---
   const trayBtns = document.querySelectorAll('.tray .thumb');
   trayBtns.forEach(btn => {
     const key = btn.getAttribute('data-add');
@@ -157,13 +173,17 @@
     
     btn.addEventListener('click', async () => {
       const inst = await ensureInstance(key);
-      if (!inst) return;
+      if (!inst) {
+        console.error('Failed to ensure sticker instance.');
+        return;
+      }
       inst.visible = true; 
       inst.mesh.visible = true; 
       active = key;
       if (statusEl) {
         statusEl.textContent = `${inst.def.name} added`;
       }
+      console.log(`Sticker '${key}' added. Mesh visibility:`, inst.mesh.visible);
     });
   });
 
@@ -189,6 +209,7 @@
       scene.add(light);
 
       await mindarThree.start();
+      console.log('MindAR start() successful!');
 
       if (statusEl) statusEl.textContent = 'Tracking face...';
 
@@ -196,8 +217,7 @@
         renderer.setAnimationLoop(() => { 
           if (renderer && scene && camera) {
             renderer.render(scene, camera); 
-            // Update posisi stiker hanya jika perlu
-            if (active && instances[active] && instances[active].mesh) {
+            if (active && instances[active]) {
               applyTransforms(instances[active]);
             }
           }
@@ -223,7 +243,7 @@
       
       camBtn.addEventListener('click', async () => {
         if (!mindarThree || !mindarThree.arSystem || camBtn.disabled) {
-            console.warn('Tombol ditekan, tetapi MindAR tidak siap.');
+            console.warn('Tombol ditekan, tetapi MindAR tidak siap. Objek MindAR:', mindarThree);
             if (statusEl) statusEl.textContent = 'Memuat... Tunggu sebentar.';
             return;
         }
@@ -251,7 +271,7 @@
     console.error('Error setting up camera button:', e);
   }
 
-  // Panggil fungsi utama di bagian paling bawah file
+  // Panggil fungsi utama
   const initialConfig = {
     container,
     maxFaces: 1,
