@@ -77,8 +77,8 @@
       }
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBG_L);
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBG_L);
         console.log('WebGL Vendor:', vendor);
         console.log('WebGL Renderer:', renderer);
       }
@@ -373,7 +373,10 @@
       // Bersihkan kanvas perekaman dan loop
       recordingCanvas = null;
       recordingCtx = null;
-      if (videoRecordLoop) videoRecordLoop = null;
+      if (videoRecordLoop) {
+        cancelAnimationFrame(videoRecordLoop);
+        videoRecordLoop = null;
+      }
     };
     mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
@@ -385,13 +388,36 @@
     const glCanvas = mindarThree.renderer.domElement;
     const videoElement = mindarThree.video;
     function drawFrame() {
-      // Gambar video kamera sebagai latar belakang
-      recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
-      // Gambar output WebGL (stiker) di atasnya
-      recordingCtx.drawImage(glCanvas, 0, 0);
-      
-      // Render scene MindAR/Three.js
+      // 1. Render scene MindAR/Three.js untuk memperbarui WebGL canvas
       renderer.render(scene, camera);
+      
+      // 2. Gambar video kamera sebagai latar belakang
+      const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
+      const canvasRatio = recordingCanvas.width / recordingCanvas.height;
+
+      let sx, sy, sWidth, sHeight;
+      let dx, dy, dWidth, dHeight;
+
+      if (videoRatio > canvasRatio) {
+        sHeight = videoElement.videoHeight;
+        sWidth = sHeight * canvasRatio;
+        sx = (videoElement.videoWidth - sWidth) / 2;
+        sy = 0;
+      } else {
+        sWidth = videoElement.videoWidth;
+        sHeight = sWidth / canvasRatio;
+        sy = (videoElement.videoHeight - sHeight) / 2;
+        sx = 0;
+      }
+      dx = 0;
+      dy = 0;
+      dWidth = recordingCanvas.width;
+      dHeight = recordingCanvas.height;
+      
+      recordingCtx.drawImage(videoElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+
+      // 3. Gambar output WebGL (stiker) di atasnya
+      recordingCtx.drawImage(glCanvas, 0, 0);
 
       videoRecordLoop = requestAnimationFrame(drawFrame);
     }
