@@ -1,10 +1,12 @@
-// AR Viewer with sticker editing via direct tap and overlay handles
+// AR Viewer with in-AR sticker editing via direct tap and overlay handles
 document.addEventListener('DOMContentLoaded', async () => {
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
   const t = qs.get('t');
-  const cam = qs.get('cam');
+  const cam = qs.get('cam'); // 'front' | 'rear'
   const imgUrl = id && t ? `/api/image/${id}?t=${t}` : null;
+  
+  console.log('URL Parameters:', { id, t, imgUrl });
   
   const statusEl = document.getElementById('status');
   const container = document.getElementById('ar');
@@ -21,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
   const rotationSign = -1;
+
   let mindarThree = null;
   let currentFacingMode = cam === 'rear' ? 'environment' : 'user';
 
@@ -34,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       return true;
     } catch (e) {
+      console.error('WebGL not supported:', e);
       return false;
     }
   }
@@ -44,7 +48,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     uploaded: { name: 'Uploaded', anchor: 168, size: [0.4, 0.4], src: imgUrl, mobileOffset: { x: 0, y: 0, z: 0.02 } }
   };
   
-  let loader = null;
+  const loader = new THREE.TextureLoader();
+  if (loader && loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
+  if (THREE && THREE.Cache) THREE.Cache.enabled = true;
+  
   const rasterTextureCache = new Map();
   const svgTextureCache = new Map();
   const preloadedImageCache = new Map();
@@ -75,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     rasterTextureCache.set(url, tex);
     return tex;
   }
-  
+
   async function getSvgTextureCached(url) {
     if (svgTextureCache.has(url)) return svgTextureCache.get(url);
     const tex = await new Promise((resolve, reject) => {
@@ -89,8 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     svgTextureCache.set(url, tex);
     return tex;
   }
-
-  // --- Main AR Logic ---
+  
   const instances = {};
   let zCounter = 1;
   let active = null;
@@ -109,10 +115,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(0, 0, 0);
+    const adjustedPos = def.mobileOffset || { x: 0, y: 0, z: 0 };
+    mesh.userData.mobileOffset = adjustedPos;
     mesh.renderOrder = zCounter++;
     mesh.visible = false;
     anchor.group.add(mesh);
-    const inst = { key, def, anchor, mesh, visible: false, scale: 1, rotation: 0, offset: { x: 0, y: 0 } };
+    const inst = { key, def, anchor, mesh, visible: false, scale: 1, rotation: 0, offset: { x: 0, y: 0 }, mobileOffset: adjustedPos };
     instances[key] = inst;
     return inst;
   }
@@ -121,12 +129,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const m = inst.mesh;
     m.scale.setScalar(inst.scale);
     m.rotation.set(0, 0, inst.rotation);
-    m.position.set(inst.offset.x, inst.offset.y, 0);
+    const mobileOffset = inst.mobileOffset || { x: 0, y: 0, z: 0 };
+    m.position.set(inst.offset.x + mobileOffset.x, inst.offset.y + mobileOffset.y, mobileOffset.z);
   }
 
   // --- UI and Gestures ---
-  const trayBtns = document.querySelectorAll('.tray .thumb');
-  trayBtns.forEach(btn => {
+  document.querySelectorAll('.tray .thumb').forEach(btn => {
     const key = btn.getAttribute('data-add');
     const imgEl = btn.querySelector('img');
     
@@ -172,26 +180,36 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    if (!window.MINDAR || !window.MINDAR.FACE || !window.MINDAR.FACE.MindARThree) {
+      if (statusEl) statusEl.textContent = 'AR library not loaded';
+      console.error('MindAR library not available');
+      return;
+    }
+    
     if (statusEl) statusEl.textContent = 'Memuat AR Engine...';
 
     try {
-      mindarThree = new MINDAR.FACE.MindARThree(config);
+      mindarThree = new window.MINDAR.FACE.MindARThree(config);
       ({ renderer, scene, camera } = mindarThree);
 
       if (!renderer || !scene || !camera) {
         throw new Error('MindAR failed to initialize properly');
       }
       
-      loader = new THREE.TextureLoader();
-      if (loader && loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
-      if (THREE && THREE.Cache) THREE.Cache.enabled = true;
-
       const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1); 
       scene.add(light);
 
-      mindarThree.start();
+      await mindarThree.start();
 
       if (statusEl) statusEl.textContent = 'Tracking face...';
+      if (mindarThree && typeof mindarThree.on === 'function') {
+        mindarThree.on('faceFound', () => {
+          if (statusEl) statusEl.textContent = 'Face detected - Ready for stickers';
+        });
+        mindarThree.on('faceLost', () => {
+          if (statusEl) statusEl.textContent = 'Face lost - Move back into view';
+        });
+      }
 
       if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => { 
@@ -231,13 +249,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         camBtn.textContent = 'Switching...';
         
         try {
-          await mindarThree.arSystem.switchCamera();
-          
-          const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
-          currentFacingMode = next;
-          
-          updateLabel();
-          
+          // Periksa apakah arSystem sudah ada sebelum memanggil switchCamera
+          if (mindarThree.arSystem && typeof mindarThree.arSystem.switchCamera === 'function') {
+            await mindarThree.arSystem.switchCamera();
+            const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
+            currentFacingMode = next;
+            updateLabel();
+          } else {
+            throw new Error("AR system is not ready or switchCamera function is missing.");
+          }
         } catch (error) {
           if (statusEl) statusEl.textContent = `Peralihan kamera gagal: ${error.message}`;
         }
@@ -248,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch(e) {
     console.error('Error setting up camera button:', e);
   }
-
+  
   const initialConfig = {
     container,
     maxFaces: 1,
