@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <title>AR Viewer</title>
     <link rel="stylesheet" href="/styles.css" />
-    <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script>
+
+   <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script>
+
     <style>
       body { margin: 0; background: #0f172a; color: #e5e7eb; }
       #ar { position: fixed; inset: 0; touch-action: none; }
@@ -37,6 +39,55 @@
       #selection .h-scale { bottom: -14px; right: -14px; cursor: nwse-resize; }
       #selection .bar { position: absolute; top: -40px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
       #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; font-size: 12px; }
+
+      /* Styling untuk tombol di gambar */
+      .circle-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: white;
+        border: 2px solid #0f172a;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        cursor: pointer;
+        transition: transform 0.2s ease-in-out;
+      }
+      .circle-btn:hover {
+        transform: scale(1.1);
+      }
+      .circle-btn svg {
+        width: 32px;
+        height: 32px;
+        fill: #0f172a;
+      }
+
+      /* Capture button */
+      #capture-btn {
+        width: 70px;
+        height: 70px;
+        background-color: transparent;
+        border: 5px solid white;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+      #capture-btn .inner-circle {
+        width: 55px;
+        height: 55px;
+        background-color: white;
+        border-radius: 50%;
+        transition: background-color 0.3s ease;
+      }
+      
+      /* Video recording state */
+      #capture-btn.recording .inner-circle {
+        background-color: #ff0000;
+        width: 30px;
+        height: 30px;
+        border-radius: 5px;
+      }
     </style>
   </head>
   <body>
@@ -48,6 +99,23 @@
         <div id="status" class="chip">Loading...</div>
       </div>
     </div>
+    
+    <div style="position:fixed; left:0; right:0; bottom:120px; display:flex; justify-content:center; align-items:center; gap:24px;">
+      <button id="photo-btn" class="circle-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M12,18.5A2.5,2.5 0 0,1 9.5,16A2.5,2.5 0 0,1 12,13.5A2.5,2.5 0 0,1 14.5,16A2.5,2.5 0 0,1 12,18.5M12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,4M12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6M16,16A4,4 0 0,0 12,12A4,4 0 0,0 8,16A4,4 0 0,0 12,20A4,4 0 0,0 16,16Z" />
+        </svg>
+      </button>
+      <button id="capture-btn" class="inner-circle-btn">
+        <div class="inner-circle"></div>
+      </button>
+      <button id="video-btn" class="circle-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M12,18.5A2.5,2.5 0 0,1 9.5,16A2.5,2.5 0 0,1 12,13.5A2.5,2.5 0 0,1 14.5,16A2.5,2.5 0 0,1 12,18.5M12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,4M12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6M16,16A4,4 0 0,0 12,12A4,4 0 0,0 8,16A4,4 0 0,0 12,20A4,4 0 0,0 16,16Z" />
+        </svg>
+      </button>
+    </div>
+
     <div class="tray">
       <button class="thumb" data-add="glasses">
         <div class="img"><img alt="Glasses" /></div>
@@ -64,4 +132,4 @@
     </div>
     <script src="/viewer.js"></script>
   </body>
-  </html>
+</html>
