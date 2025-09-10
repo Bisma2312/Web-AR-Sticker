@@ -77,7 +77,7 @@
       }
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBG_L);
         const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
         console.log('WebGL Vendor:', vendor);
         console.log('WebGL Renderer:', renderer);
@@ -118,8 +118,6 @@
       const watermarkMaterial = new THREE.MeshBasicMaterial({
         map: watermarkTexture,
         transparent: true,
-        // Baris ini dihapus
-        // alphaTest: 0.1,
         depthTest: false,
         depthWrite: false,
       });
@@ -140,7 +138,7 @@
       
       // Menggunakan renderOrder yang tinggi untuk memastikan selalu di atas
       watermarkMesh.renderOrder = 999;
-      
+
       scene.add(watermarkMesh);
       
       console.log('Watermark setup complete and positioned center.');
@@ -181,6 +179,7 @@
   
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
+  camera.add(watermarkMesh);
 
   function snapshotInstances(){
     const snap = [];
@@ -381,68 +380,51 @@
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
+    // PERUBAHAN UTAMA: Mencoba merekam langsung ke MP4
+    let mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+        console.warn('Perekaman MP4 tidak didukung. Beralih ke WebM.');
+        mimeType = 'video/webm; codecs=vp9';
+        if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung. Rekaman akan disimpan sebagai WebM.';
+    }
+
     try {
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
     } catch (e) {
-      console.error('Exception while creating MediaRecorder:', e);
-      if (statusEl) statusEl.textContent = 'Video recording not supported.';
-      return;
+        console.error('Exception while creating MediaRecorder:', e);
+        if (statusEl) statusEl.textContent = 'Video recording not supported.';
+        return;
     }
     
-    mediaRecorder.onstop = async (event) => {
+    mediaRecorder.onstop = (event) => {
       console.log('Recorder stopped:', event);
-  
-      // Perbaikan: createFFmpeg adalah fungsi global di v0.7.0
-      const ffmpeg = createFFmpeg({ log: true });
-  
-      if (!ffmpeg.isLoaded()) {
-          await ffmpeg.load();
-      }
-  
-      const superBuffer = new Blob(recordedBlobs, { type: 'video/webm' });
+      const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+      const extension = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
       const videoURL = window.URL.createObjectURL(superBuffer);
-  
-      if (statusEl) statusEl.textContent = 'Transcoding video to MP4...';
-      console.log('Starting transcoding...');
-  
-      // Perbaikan: fetchFile adalah fungsi global di v0.7.0
-      ffmpeg.FS('writeFile', 'input.webm', await fetchFile(superBuffer));
-  
-      await ffmpeg.run('-i', 'input.webm', '-vcodec', 'libx264', '-acodec', 'aac', 'output.mp4');
-  
-      const data = ffmpeg.FS('readFile', 'output.mp4');
-  
-      const outputBlob = new Blob([data.buffer], { type: 'video/mp4' });
-      const outputURL = window.URL.createObjectURL(outputBlob);
-      
       const link = document.createElement('a');
-      link.href = outputURL;
-      link.download = 'ar-video.mp4';
+      link.href = videoURL;
+      link.download = `ar-video.${extension}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(videoURL);
-      window.URL.revokeObjectURL(outputURL);
-  
-      if (statusEl) statusEl.textContent = 'Video saved as MP4!';
-      console.log('Transcoding complete, MP4 saved.');
-  
+      if (statusEl) statusEl.textContent = 'Video saved!';
+
       if (renderer && renderer.setAnimationLoop) {
-          renderer.setAnimationLoop(() => {
-              renderer.render(scene, camera);
-              updateSelectionOverlay();
-              updateStickerPositions();
-          });
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+          updateSelectionOverlay();
+          updateStickerPositions();
+        });
       }
-  
+      
       recordingCanvas = null;
       recordingCtx = null;
       if (videoRecordLoop) {
-          cancelAnimationFrame(videoRecordLoop);
-          videoRecordLoop = null;
+        cancelAnimationFrame(videoRecordLoop);
+        videoRecordLoop = null;
       }
     };
-    
     mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         recordedBlobs.push(event.data);
