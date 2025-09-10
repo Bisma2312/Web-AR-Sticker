@@ -144,7 +144,7 @@
       //camera.add(watermarkMesh);
 
       scene.add(watermarkMesh);
-      watermarkMesh.position.set(0, -1, -1);
+      watermarkMesh.position.set(0, 0.5, -1);
       
       console.log('Watermark setup complete and positioned center.');
 
