@@ -124,7 +124,8 @@
       });
 
       const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
-      const displayWidth = 0.2;
+      // Perbesar ukuran agar lebih terlihat
+      const displayWidth = 0.3;
       const displayHeight = displayWidth / aspectRatio;
 
       const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
@@ -132,15 +133,11 @@
       
       watermarkMesh.visible = true;
 
-      // Posisikan watermark relatif terhadap kamera
-      // Koordinat ini relatif terhadap kamera: -x ke kiri, +y ke atas, -z ke depan
       const positionX = 0;
-      const positionY = -0.5; // Sesuaikan agar di tengah bawah layar
-      const positionZ = -0.5; // Sesuaikan agar di depan kamera, tetapi tidak terlalu dekat
+      const positionY = -0.6; // Turunkan sedikit agar tidak terlalu ke tengah
+      const positionZ = -0.5;
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
-      // Tambahkan mesh watermark sebagai anak dari kamera
-      // Ini adalah kunci agar watermark selalu mengikuti kamera
       camera.add(watermarkMesh);
       
       console.log('Watermark setup complete.');
@@ -318,8 +315,8 @@
       console.error('Renderer, canvas, or video not available');
       return;
     }
-    const glCanvas = mindarThree.renderer.domElement; // Canvas WebGL dengan stiker AR
-    const videoElement = mindarThree.video; // Elemen video kamera
+    const glCanvas = mindarThree.renderer.domElement;
+    const videoElement = mindarThree.video;
 
     requestAnimationFrame(() => {
       const offscreenCanvas = document.createElement('canvas');
@@ -371,17 +368,14 @@
   function startVideoRecording() {
     if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video || isRecording) return;
     
-    // Hapus loop rendering yang ada jika ada
     if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
 
-    // Buat kanvas tersembunyi untuk perekaman
     recordingCanvas = document.createElement('canvas');
     recordingCanvas.width = mindarThree.renderer.domElement.width;
     recordingCanvas.height = mindarThree.renderer.domElement.height;
     recordingCtx = recordingCanvas.getContext('2d');
     
-    // Buat stream dari kanvas yang baru
-    const stream = recordingCanvas.captureStream(30); // 30 FPS
+    const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
     try {
@@ -405,7 +399,6 @@
       window.URL.revokeObjectURL(videoURL);
       if (statusEl) statusEl.textContent = 'Video saved!';
 
-      // Mulai kembali loop rendering Three.js utama
       if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
@@ -414,7 +407,6 @@
         });
       }
       
-      // Bersihkan kanvas perekaman dan loop
       recordingCanvas = null;
       recordingCtx = null;
       if (videoRecordLoop) {
@@ -428,15 +420,12 @@
       }
     };
     
-    // Loop baru untuk menggambar video dan AR ke kanvas perekaman
     const glCanvas = mindarThree.renderer.domElement;
     const videoElement = mindarThree.video;
     
     function drawFrame() {
-      // 1. Render scene MindAR/Three.js untuk memperbarui WebGL canvas
       renderer.render(scene, camera);
       
-      // 2. Gambar video kamera sebagai latar belakang
       const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
       const canvasRatio = recordingCanvas.width / recordingCanvas.height;
 
@@ -461,7 +450,6 @@
       
       recordingCtx.drawImage(videoElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
 
-      // 3. Gambar output WebGL (stiker) di atasnya
       recordingCtx.drawImage(glCanvas, 0, 0);
 
       videoRecordLoop = requestAnimationFrame(drawFrame);
@@ -818,7 +806,6 @@
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
     
-    // Panggil setup watermark setelah MindAR dimulai
     await setupWatermark();
 
     if (statusEl) statusEl.textContent = 'Tracking face...';
@@ -864,7 +851,6 @@
     }
   } catch (_) {}
 
-  // Ubah loop rendering utama
   if (renderer && renderer.setAnimationLoop) {
     renderer.setAnimationLoop(() => { 
       try {
