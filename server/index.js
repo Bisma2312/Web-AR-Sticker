@@ -3,7 +3,7 @@ const express = require('express');
 const multer = require('multer');
 
 // Optional: load .env in local dev without adding hard dependency
-try { require('dotenv').config(); } catch (_) {}
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (_) {}
 
 const { putFileToStorage, insertUploadRow, validateTokenAndGetSignedUrl, getRowForToken } = require('./utils/uploads');
 const { getSupabaseClient } = require('./utils/supabase');

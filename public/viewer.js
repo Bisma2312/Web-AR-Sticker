@@ -126,13 +126,13 @@
       //const displayWidth = 0.15;
       //const displayHeight = displayWidth / aspectRatio;
 
-      const watermarkGeometry = new THREE.PlaneGeometry(0.15 , 0.15);
+      const watermarkGeometry = new THREE.PlaneGeometry(0.1, 0.1);
       watermarkMesh = new THREE.Mesh(watermarkGeometry, watermarkMaterial);
       
       watermarkMesh.visible = true;
 
       const positionX = 0;
-      const positionY = -0.15;
+      const positionY = -0.16;
       const positionZ = -1;
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
