@@ -124,8 +124,7 @@
       });
 
       const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
-      // Perbesar ukuran agar lebih terlihat
-      const displayWidth = 0.3;
+      const displayWidth = 0.3; // Ukuran sedikit lebih besar
       const displayHeight = displayWidth / aspectRatio;
 
       const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
@@ -133,14 +132,15 @@
       
       watermarkMesh.visible = true;
 
+      // Ubah posisi ke tengah layar
       const positionX = 0;
-      const positionY = -0.6; // Turunkan sedikit agar tidak terlalu ke tengah
-      const positionZ = -0.5;
+      const positionY = 0;
+      const positionZ = -0.5; // Agak ke depan kamera agar terlihat jelas
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
       camera.add(watermarkMesh);
       
-      console.log('Watermark setup complete.');
+      console.log('Watermark setup complete and positioned center.');
 
     } catch (error) {
       console.error('Failed to load or setup watermark:', error);
