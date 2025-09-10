@@ -77,8 +77,8 @@
       }
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBG_L);
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBG_L);
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
         console.log('WebGL Vendor:', vendor);
         console.log('WebGL Renderer:', renderer);
       }
@@ -107,6 +107,71 @@
   }
 
   let mindarThree, renderer, scene, camera;
+  let watermarkMesh; // Deklarasi untuk mesh watermark
+
+  // Fungsi untuk memuat dan membuat watermark 3D
+  async function setupWatermark() {
+    try {
+      const watermarkTexture = await new THREE.TextureLoader().loadAsync('/assets/logo-watermark.png');
+      watermarkTexture.encoding = THREE.sRGBEncoding;
+
+      const watermarkMaterial = new THREE.MeshBasicMaterial({
+        map: watermarkTexture,
+        transparent: true,
+        alphaTest: 0.1,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
+      const displayWidth = 0.2;
+      const displayHeight = displayWidth / aspectRatio;
+
+      const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
+      watermarkMesh = new THREE.Mesh(watermarkGeometry, watermarkMaterial);
+      
+      watermarkMesh.visible = true;
+      scene.add(watermarkMesh);
+      console.log('Watermark setup complete.');
+
+    } catch (error) {
+      console.error('Failed to load or setup watermark:', error);
+      if (statusEl) statusEl.textContent = 'Failed to load watermark.';
+    }
+  }
+
+  // Fungsi untuk memperbarui posisi watermark agar di tengah bawah layar
+  function updateWatermarkPosition() {
+    if (!watermarkMesh || !camera) return;
+    
+    // Dapatkan posisi kamera dalam ruang dunianya sendiri
+    const cameraWorldPosition = new THREE.Vector3();
+    camera.getWorldPosition(cameraWorldPosition);
+
+    // Dapatkan arah "kanan", "atas", dan "depan" kamera
+    const cameraRight = new THREE.Vector3(1, 0, 0);
+    const cameraUp = new THREE.Vector3(0, 1, 0);
+    const cameraForward = new THREE.Vector3(0, 0, -1);
+    
+    cameraRight.applyQuaternion(camera.quaternion);
+    cameraUp.applyQuaternion(camera.quaternion);
+    cameraForward.applyQuaternion(camera.quaternion);
+
+    // Tentukan posisi watermark relatif terhadap kamera
+    const targetZ = -0.5; // Agak di depan kamera
+    const targetY = -0.5; // Agak di bawah tengah layar
+    const worldPosition = new THREE.Vector3();
+
+    // Hitung posisi di ruang dunia
+    worldPosition.copy(cameraWorldPosition)
+                 .add(cameraForward.multiplyScalar(targetZ))
+                 .add(cameraUp.multiplyScalar(targetY));
+    
+    // Terapkan posisi dan orientasi
+    watermarkMesh.position.copy(worldPosition);
+    watermarkMesh.quaternion.copy(camera.quaternion);
+  }
+
   try {
     const mindarConfig = {
       container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
@@ -234,6 +299,7 @@
               renderer.render(scene, camera);
               updateSelectionOverlay();
               updateStickerPositions();
+              updateWatermarkPosition(); // Perbarui posisi watermark
             }
           }
           catch (error) {
@@ -367,6 +433,7 @@
           renderer.render(scene, camera);
           updateSelectionOverlay();
           updateStickerPositions();
+          updateWatermarkPosition(); // Perbarui posisi watermark
         });
       }
       
@@ -387,6 +454,7 @@
     // Loop baru untuk menggambar video dan AR ke kanvas perekaman
     const glCanvas = mindarThree.renderer.domElement;
     const videoElement = mindarThree.video;
+    
     function drawFrame() {
       // 1. Render scene MindAR/Three.js untuk memperbarui WebGL canvas
       renderer.render(scene, camera);
@@ -772,6 +840,10 @@
     const startPromise = mindarThree.start();
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
+    
+    // Panggil setup watermark setelah MindAR dimulai
+    await setupWatermark();
+
     if (statusEl) statusEl.textContent = 'Tracking face...';
     if (mindarThree && typeof mindarThree.on === 'function') {
       mindarThree.on('faceFound', () => {
@@ -823,6 +895,8 @@
           renderer.render(scene, camera); 
           updateSelectionOverlay(); 
           updateStickerPositions();
+          updateWatermarkPosition(); // Panggil fungsi pembaruan posisi watermark di setiap frame
+
           if (mindarThree && mindarThree.faceTracker) {
             const isTracking = mindarThree.faceTracker.isTracking;
             if (isTracking && statusEl && statusEl.textContent.includes('Starting') || statusEl.textContent.includes('Camera starting')) {
