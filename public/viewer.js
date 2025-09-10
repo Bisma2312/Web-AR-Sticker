@@ -388,34 +388,64 @@
       return;
     }
     
-    mediaRecorder.onstop = (event) => {
-      console.log('Recorder stopped:', event);
-      const superBuffer = new Blob(recordedBlobs, { type: 'video/webm' });
-      const videoURL = window.URL.createObjectURL(superBuffer);
-      const link = document.createElement('a');
-      link.href = videoURL;
-      link.download = 'ar-video.webm';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(videoURL);
-      if (statusEl) statusEl.textContent = 'Video saved!';
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
 
-      if (renderer && renderer.setAnimationLoop) {
+   mediaRecorder.onstop = async (event) => {
+    console.log('Recorder stopped:', event);
+
+    if (!ffmpeg.isLoaded()) {
+        await ffmpeg.load();
+    }
+
+    const superBuffer = new Blob(recordedBlobs, { type: 'video/webm' });
+    const videoURL = window.URL.createObjectURL(superBuffer);
+
+    // Tampilkan pesan status
+    if (statusEl) statusEl.textContent = 'Transcoding video to MP4...';
+    console.log('Starting transcoding...');
+
+    // Tulis file ke memori FFmpeg
+    ffmpeg.FS('writeFile', 'input.webm', await fetchFile(superBuffer));
+
+    // Jalankan perintah FFmpeg
+    await ffmpeg.run('-i', 'input.webm', '-vcodec', 'libx264', '-acodec', 'aac', 'output.mp4');
+
+    // Baca file yang sudah di-transcode
+    const data = ffmpeg.FS('readFile', 'output.mp4');
+
+    // Buat objek URL dan tautan unduhan
+    const outputBlob = new Blob([data.buffer], { type: 'video/mp4' });
+    const outputURL = window.URL.createObjectURL(outputBlob);
+    
+    const link = document.createElement('a');
+    link.href = outputURL;
+    link.download = 'ar-video.mp4';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(videoURL);
+    window.URL.revokeObjectURL(outputURL);
+
+    if (statusEl) statusEl.textContent = 'Video saved as MP4!';
+    console.log('Transcoding complete, MP4 saved.');
+
+    // Kembalikan ke loop render Three.js
+    if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-          updateSelectionOverlay();
-          updateStickerPositions();
+            renderer.render(scene, camera);
+            updateSelectionOverlay();
+            updateStickerPositions();
         });
-      }
-      
-      recordingCanvas = null;
-      recordingCtx = null;
-      if (videoRecordLoop) {
+    }
+
+    recordingCanvas = null;
+    recordingCtx = null;
+    if (videoRecordLoop) {
         cancelAnimationFrame(videoRecordLoop);
         videoRecordLoop = null;
-      }
-    };
+    }
+ };
     mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         recordedBlobs.push(event.data);
