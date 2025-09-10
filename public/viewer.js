@@ -141,7 +141,7 @@
       // Menggunakan renderOrder yang tinggi untuk memastikan selalu di atas
       watermarkMesh.renderOrder = 999;
       
-      camera.add(watermarkMesh);
+      //camera.add(watermarkMesh);
       
       console.log('Watermark setup complete and positioned center.');
 
@@ -181,6 +181,7 @@
   
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
+  camera.add(watermarkMesh);
 
   function snapshotInstances(){
     const snap = [];
