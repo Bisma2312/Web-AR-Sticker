@@ -107,7 +107,7 @@
   }
 
   let mindarThree, renderer, scene, camera;
-  let watermarkMesh; // Deklarasi untuk mesh watermark
+  let watermarkMesh;
 
   // Fungsi untuk memuat dan membuat watermark 3D
   async function setupWatermark() {
@@ -131,7 +131,18 @@
       watermarkMesh = new THREE.Mesh(watermarkGeometry, watermarkMaterial);
       
       watermarkMesh.visible = true;
-      scene.add(watermarkMesh);
+
+      // Posisikan watermark relatif terhadap kamera
+      // Koordinat ini relatif terhadap kamera: -x ke kiri, +y ke atas, -z ke depan
+      const positionX = 0;
+      const positionY = -0.5; // Sesuaikan agar di tengah bawah layar
+      const positionZ = -0.5; // Sesuaikan agar di depan kamera, tetapi tidak terlalu dekat
+      watermarkMesh.position.set(positionX, positionY, positionZ);
+      
+      // Tambahkan mesh watermark sebagai anak dari kamera
+      // Ini adalah kunci agar watermark selalu mengikuti kamera
+      camera.add(watermarkMesh);
+      
       console.log('Watermark setup complete.');
 
     } catch (error) {
@@ -139,39 +150,7 @@
       if (statusEl) statusEl.textContent = 'Failed to load watermark.';
     }
   }
-
-  // Fungsi untuk memperbarui posisi watermark agar di tengah bawah layar
-  function updateWatermarkPosition() {
-    if (!watermarkMesh || !camera) return;
-    
-    // Dapatkan posisi kamera dalam ruang dunianya sendiri
-    const cameraWorldPosition = new THREE.Vector3();
-    camera.getWorldPosition(cameraWorldPosition);
-
-    // Dapatkan arah "kanan", "atas", dan "depan" kamera
-    const cameraRight = new THREE.Vector3(1, 0, 0);
-    const cameraUp = new THREE.Vector3(0, 1, 0);
-    const cameraForward = new THREE.Vector3(0, 0, -1);
-    
-    cameraRight.applyQuaternion(camera.quaternion);
-    cameraUp.applyQuaternion(camera.quaternion);
-    cameraForward.applyQuaternion(camera.quaternion);
-
-    // Tentukan posisi watermark relatif terhadap kamera
-    const targetZ = -0.5; // Agak di depan kamera
-    const targetY = -0.5; // Agak di bawah tengah layar
-    const worldPosition = new THREE.Vector3();
-
-    // Hitung posisi di ruang dunia
-    worldPosition.copy(cameraWorldPosition)
-                 .add(cameraForward.multiplyScalar(targetZ))
-                 .add(cameraUp.multiplyScalar(targetY));
-    
-    // Terapkan posisi dan orientasi
-    watermarkMesh.position.copy(worldPosition);
-    watermarkMesh.quaternion.copy(camera.quaternion);
-  }
-
+  
   try {
     const mindarConfig = {
       container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
@@ -299,7 +278,6 @@
               renderer.render(scene, camera);
               updateSelectionOverlay();
               updateStickerPositions();
-              updateWatermarkPosition(); // Perbarui posisi watermark
             }
           }
           catch (error) {
@@ -433,7 +411,6 @@
           renderer.render(scene, camera);
           updateSelectionOverlay();
           updateStickerPositions();
-          updateWatermarkPosition(); // Perbarui posisi watermark
         });
       }
       
@@ -895,7 +872,6 @@
           renderer.render(scene, camera); 
           updateSelectionOverlay(); 
           updateStickerPositions();
-          updateWatermarkPosition(); // Panggil fungsi pembaruan posisi watermark di setiap frame
 
           if (mindarThree && mindarThree.faceTracker) {
             const isTracking = mindarThree.faceTracker.isTracking;
