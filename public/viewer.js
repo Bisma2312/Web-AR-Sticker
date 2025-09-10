@@ -77,7 +77,7 @@
       }
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBG_L);
         const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
         console.log('WebGL Vendor:', vendor);
         console.log('WebGL Renderer:', renderer);
@@ -118,7 +118,8 @@
       const watermarkMaterial = new THREE.MeshBasicMaterial({
         map: watermarkTexture,
         transparent: true,
-        alphaTest: 0.1,
+        // Baris ini dihapus
+        // alphaTest: 0.1,
         depthTest: false,
         depthWrite: false,
       });
@@ -137,7 +138,7 @@
       const positionZ = -0.5;
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
-      // Ini adalah baris baru yang penting
+      // Menggunakan renderOrder yang tinggi untuk memastikan selalu di atas
       watermarkMesh.renderOrder = 999;
       
       camera.add(watermarkMesh);
