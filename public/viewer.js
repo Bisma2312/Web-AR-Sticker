@@ -29,6 +29,14 @@
   let recordingCanvas; // Kanvas untuk menggabungkan video dan AR
   let recordingCtx;
   let videoRecordLoop; // Loop untuk menggambar video selama perekaman
+  
+  // Elemen pratinjau baru
+  const previewContainer = document.getElementById('preview-container');
+  const previewImage = document.getElementById('preview-image');
+  const previewVideo = document.getElementById('preview-video');
+  const saveButton = document.getElementById('save-button');
+  const shareButton = document.getElementById('share-button');
+  const closeButton = document.getElementById('close-preview-button');
 
   const modeToggleBtn = document.getElementById('mode-toggle-btn');
   const captureBtn = document.getElementById('capture-btn');
@@ -353,13 +361,7 @@
         ctx.drawImage(glCanvas, 0, 0);
 
         const dataURL = offscreenCanvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.href = dataURL;
-        link.download = 'ar-photo.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        if (statusEl) statusEl.textContent = 'Photo saved!';
+        showPreview(dataURL, 'photo');
       } catch (error) {
         console.error('Failed to draw canvas or save photo:', error);
         if (statusEl) statusEl.textContent = 'Failed to capture photo. Try again.';
@@ -380,7 +382,6 @@
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    // PERUBAHAN UTAMA: Mencoba merekam langsung ke MP4
     let mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
         console.warn('Perekaman MP4 tidak didukung. Beralih ke WebM.');
@@ -399,16 +400,8 @@
     mediaRecorder.onstop = (event) => {
       console.log('Recorder stopped:', event);
       const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-      const extension = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
       const videoURL = window.URL.createObjectURL(superBuffer);
-      const link = document.createElement('a');
-      link.href = videoURL;
-      link.download = `ar-video.${extension}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(videoURL);
-      if (statusEl) statusEl.textContent = 'Video saved!';
+      showPreview(videoURL, 'video');
 
       if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => {
@@ -485,6 +478,71 @@
     }
     console.log('Video recording stopped');
   }
+  
+  // Fungsi baru untuk menampilkan pratinjau
+  function showPreview(dataUrl, type) {
+    if (type === 'photo') {
+        previewImage.src = dataUrl;
+        previewImage.style.display = 'block';
+        previewVideo.style.display = 'none';
+        saveButton.onclick = () => saveFile(dataUrl, 'ar-photo.png');
+        shareButton.onclick = () => shareFile(dataUrl, 'ar-photo.png', 'image/png');
+    } else {
+        previewVideo.src = dataUrl;
+        previewVideo.style.display = 'block';
+        previewImage.style.display = 'none';
+        saveButton.onclick = () => saveFile(dataUrl, `ar-video.${dataUrl.includes('mp4') ? 'mp4' : 'webm'}`);
+        shareButton.onclick = () => shareFile(dataUrl, `ar-video.${dataUrl.includes('mp4') ? 'mp4' : 'webm'}`, previewVideo.srcObject.type);
+    }
+    
+    previewContainer.classList.remove('hidden');
+    shareButton.style.display = navigator.share ? 'block' : 'none';
+    if (statusEl) statusEl.textContent = 'Pratinjau siap!';
+  }
+  
+  // Fungsi untuk menyimpan file
+  function saveFile(url, filename) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      if (statusEl) statusEl.textContent = 'File berhasil diunduh!';
+  }
+
+  // Fungsi untuk berbagi file menggunakan Web Share API
+  async function shareFile(url, filename, mimeType) {
+      if (navigator.share) {
+          try {
+              const response = await fetch(url);
+              const blob = await response.blob();
+              const file = new File([blob], filename, { type: mimeType });
+              await navigator.share({
+                  files: [file],
+                  title: 'AR Video',
+                  text: 'Lihat video AR saya!',
+              });
+              if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
+          } catch (error) {
+              console.error('Gagal berbagi:', error);
+              if (statusEl) statusEl.textContent = 'Berbagi gagal.';
+          }
+      } else {
+          alert('Fitur berbagi tidak didukung di browser ini.');
+          if (statusEl) statusEl.textContent = 'Berbagi tidak didukung.';
+      }
+  }
+
+  closeButton.addEventListener('click', () => {
+      previewContainer.classList.add('hidden');
+      if (previewVideo) {
+          previewVideo.pause();
+          previewVideo.removeAttribute('src');
+          previewVideo.load();
+      }
+  });
+
 
   if (modeToggleBtn) {
     modeToggleBtn.addEventListener('click', () => {

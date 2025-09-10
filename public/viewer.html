@@ -79,6 +79,39 @@
       #selection .h-scale { bottom: -14px; right: -14px; cursor: nwse-resize; }
       #selection .bar { position: absolute; top: -40px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
       #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; font-size: 12px; }
+      #preview-container {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    flex-direction: column;
+}
+
+#preview-container.hidden {
+    display: none;
+}
+
+#preview-frame {
+    background: #1f2937;
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+#preview-frame img, #preview-frame video {
+    max-width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
     </style>
   </head>
   <body>
@@ -103,6 +136,16 @@
       <button class="thumb" data-add="uploaded">
         <img src="/stickers/glasses.svg" alt="Uploaded Image" />
       </button>
+    </div>
+    
+    <div id="preview-container" class="hidden">
+      <div id="preview-frame">
+        <img id="preview-image" style="display: none;">
+        <video id="preview-video" controls autoplay muted playsinline style="display: none;"></video>
+        <button id="save-button" class="chip button">Simpan</button>
+        <button id="share-button" class="chip button">Bagikan</button>
+        <button id="close-preview-button" class="chip button">Tutup</button>
+      </div>
     </div>
 
     <script src="/viewer.js"></script>
