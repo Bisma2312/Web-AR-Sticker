@@ -125,7 +125,7 @@
       });
 
       const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
-      const displayWidth = 0.3;
+      const displayWidth = 0.1;
       const displayHeight = displayWidth / aspectRatio;
 
       const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
@@ -134,7 +134,7 @@
       watermarkMesh.visible = true;
 
       const positionX = 0;
-      const positionY = -0.1;
+      const positionY = -0.2;
       const positionZ = -1;
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
