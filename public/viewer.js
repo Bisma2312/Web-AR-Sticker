@@ -118,17 +118,15 @@
       const watermarkMaterial = new THREE.MeshBasicMaterial({
         map: watermarkTexture,
         transparent: true,
-        // Baris ini dihapus
-        // alphaTest: 0.1,
         depthTest: false,
         depthWrite: false,
       });
 
-      const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
-      const displayWidth = 0.1;
-      const displayHeight = displayWidth / aspectRatio;
+      //const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
+      //const displayWidth = 0.15;
+      //const displayHeight = displayWidth / aspectRatio;
 
-      const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
+      const watermarkGeometry = new THREE.PlaneGeometry(0.15 , 0.15);
       watermarkMesh = new THREE.Mesh(watermarkGeometry, watermarkMaterial);
       
       watermarkMesh.visible = true;
