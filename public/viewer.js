@@ -124,7 +124,7 @@
       });
 
       const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
-      const displayWidth = 0.3; // Ukuran sedikit lebih besar
+      const displayWidth = 0.3;
       const displayHeight = displayWidth / aspectRatio;
 
       const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
@@ -132,11 +132,13 @@
       
       watermarkMesh.visible = true;
 
-      // Ubah posisi ke tengah layar
       const positionX = 0;
       const positionY = 0;
-      const positionZ = -0.5; // Agak ke depan kamera agar terlihat jelas
+      const positionZ = -0.5;
       watermarkMesh.position.set(positionX, positionY, positionZ);
+      
+      // Ini adalah baris baru yang penting
+      watermarkMesh.renderOrder = 999;
       
       camera.add(watermarkMesh);
       
