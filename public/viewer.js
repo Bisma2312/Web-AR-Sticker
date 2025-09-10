@@ -135,16 +135,15 @@
 
       const positionX = 0;
       const positionY = 0;
-      const positionZ = -0.5;
+      const positionZ = -1;
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
       // Menggunakan renderOrder yang tinggi untuk memastikan selalu di atas
       watermarkMesh.renderOrder = 999;
       
-      camera.add(watermarkMesh);
+      //camera.add(watermarkMesh);
 
       scene.add(watermarkMesh);
-      watermarkMesh.position.set(0, 0, -1);
       
       console.log('Watermark setup complete and positioned center.');
 
