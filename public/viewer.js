@@ -492,7 +492,7 @@
         previewVideo.style.display = 'block';
         previewImage.style.display = 'none';
         saveButton.onclick = () => saveFile(dataUrl, `ar-video.${dataUrl.includes('mp4') ? 'mp4' : 'webm'}`);
-        shareButton.onclick = () => shareFile(dataUrl, `ar-video.${dataUrl.includes('mp4') ? 'mp4' : 'webm'}`, previewVideo.srcObject.type);
+        shareButton.onclick = () => shareVideoFile(dataUrl);
     }
     
     previewContainer.classList.remove('hidden');
@@ -531,6 +531,43 @@
       } else {
           alert('Fitur berbagi tidak didukung di browser ini.');
           if (statusEl) statusEl.textContent = 'Berbagi tidak didukung.';
+      }
+  }
+  
+  // Fungsi baru untuk berbagi video
+  async function shareVideoFile(url) {
+      if (!navigator.share) {
+          alert('Fitur berbagi tidak didukung di browser ini.');
+          if (statusEl) statusEl.textContent = 'Berbagi tidak didukung.';
+          return;
+      }
+      
+      try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          
+          // Cek mimeType yang dihasilkan, dan konversi jika perlu
+          let targetMime = blob.type;
+          if (blob.type.includes('webm')) {
+              // WebM tidak didukung, maka kita harus mengonversi
+              // Karena FFmpeg tidak digunakan, konversi ini tidak bisa dilakukan di browser.
+              // Solusi ini harus mengandalkan browser yang mendukung berbagi WebM, yang jarang terjadi.
+              // Oleh karena itu, kita akan coba dengan mimeType 'video/webm' yang paling umum
+              targetMime = 'video/webm';
+              console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
+          }
+
+          const file = new File([blob], `ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
+
+          await navigator.share({
+              files: [file],
+              title: 'AR Video',
+              text: 'Lihat video AR saya!',
+          });
+          if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
+      } catch (error) {
+          console.error('Gagal berbagi:', error);
+          if (statusEl) statusEl.textContent = `Berbagi gagal: ${error.message}`;
       }
   }
 
