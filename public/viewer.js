@@ -112,7 +112,7 @@
   // Fungsi untuk memuat dan membuat watermark 3D
   async function setupWatermark() {
     try {
-      const watermarkTexture = await new THREE.TextureLoader().loadAsync('public/assets/logo-watermark.png');
+      const watermarkTexture = await new THREE.TextureLoader().loadAsync('assets/logo-watermark.png');
       watermarkTexture.encoding = THREE.sRGBEncoding;
 
       const watermarkMaterial = new THREE.MeshBasicMaterial({
