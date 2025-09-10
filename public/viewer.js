@@ -123,7 +123,7 @@
       });
 
       const aspectRatio = watermarkTexture.image.width / watermarkTexture.image.height;
-      const displayWidth = 0.1;
+      const displayWidth = 0.3;
       const displayHeight = displayWidth / aspectRatio;
 
       const watermarkGeometry = new THREE.PlaneGeometry(displayWidth, displayHeight);
