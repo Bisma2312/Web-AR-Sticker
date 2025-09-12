@@ -391,10 +391,10 @@ function App() {
 
   return (
     <div className="app">
-      {/* Styles for QR container */}
+      {/* Styles untuk QR container */}
       <style>{`
         .qr-container {
-            max-width: 1024px;
+            max-width: 320px;
             padding: 20px;
         }
 
