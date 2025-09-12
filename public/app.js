@@ -394,15 +394,16 @@ function App() {
       {/* Styles untuk QR container */}
       <style>{`
         .qr-container {
-            max-width: 320px;
-            padding: 20px;
+            max-width: 300px; /* Ukuran container disesuaikan dengan QR code */
+            margin: 0 auto; /* Menengahkan container secara horizontal */
         }
-
+        
         .qr {
             width: 100%;
             height: auto;
             aspect-ratio: 1 / 1;
             overflow: hidden;
+            border: 1px solid #ddd; /* Menambahkan border untuk visualisasi */
         }
       `}</style>
       <div className="landing">
