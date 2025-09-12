@@ -75,15 +75,15 @@ function App() {
           qrRef.current.innerHTML = '';
           const viewerUrl = `${location.origin}${data.viewerUrl}`;
           // Di sini perubahan untuk menggunakan GoQR.me API dengan ukuran 300x300
-          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(viewerUrl)}`;
+          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(viewerUrl)}`;
           
           const qrImage = document.createElement('img');
           qrImage.src = qrCodeUrl;
           qrImage.alt = 'QR Code to open AR viewer';
           // Sesuaikan juga style width dan height
-          qrImage.style.width = '1000px';
-          qrImage.style.height = '1000px';
-
+          qrImage.style.width = '300px';
+          qrImage.style.height = '300px';
+          
           qrRef.current.appendChild(qrImage);
         } catch (e) {
           console.error('QR generation failed:', e);
@@ -391,6 +391,20 @@ function App() {
 
   return (
     <div className="app">
+      {/* Styles for QR container */}
+      <style>{`
+        .qr-container {
+            max-width: 1024px;
+            padding: 20px;
+        }
+
+        .qr {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+        }
+      `}</style>
       <div className="landing">
         <div className="card stack">
           <div className="row-center">
