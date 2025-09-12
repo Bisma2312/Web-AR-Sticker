@@ -73,7 +73,18 @@ function App() {
         if (!qrRef.current) return;
         try {
           qrRef.current.innerHTML = '';
-          new window.QRCode(qrRef.current, { text: `${location.origin}${data.viewerUrl}`, width: 128, height: 128 });
+          const viewerUrl = `${location.origin}${data.viewerUrl}`;
+          // Di sini perubahan untuk menggunakan GoQR.me API dengan ukuran 300x300
+          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(viewerUrl)}`;
+          
+          const qrImage = document.createElement('img');
+          qrImage.src = qrCodeUrl;
+          qrImage.alt = 'QR Code to open AR viewer';
+          // Sesuaikan juga style width dan height
+          qrImage.style.width = '300px';
+          qrImage.style.height = '300px';
+          
+          qrRef.current.appendChild(qrImage);
         } catch (e) {
           console.error('QR generation failed:', e);
         }
