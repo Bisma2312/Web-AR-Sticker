@@ -268,6 +268,18 @@
       const light2 = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
       scene.add(light2);
       await mindarThree.start();
+      
+      const videoElement = mindarThree.video;
+      if (videoElement) {
+          videoElement.style.transform = 'scaleX(-1)';
+          console.log('Video element mirrored via CSS after restart.');
+      }
+      
+      if (scene) {
+          scene.scale.x = -1;
+          console.log('Scene mirrored to correct tracking.');
+      }
+
       if (mindarThree.video && isMobile) {
         const video = mindarThree.video;
         video.setAttribute('playsinline', ''); video.playsInline = true; video.muted = true; video.autoplay = true;
@@ -337,29 +349,13 @@
       const ctx = offscreenCanvas.getContext('2d');
 
       try {
-        const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
-        const canvasRatio = offscreenCanvas.width / offscreenCanvas.height;
+          // Terapkan mirroring pada konteks canvas untuk membalikkan video
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
+        ctx.restore();
 
-        let sx, sy, sWidth, sHeight;
-        let dx, dy, dWidth, dHeight;
-
-        if (videoRatio > canvasRatio) {
-          sHeight = videoElement.videoHeight;
-          sWidth = sHeight * canvasRatio;
-          sx = (videoElement.videoWidth - sWidth) / 2;
-          sy = 0;
-        } else {
-          sWidth = videoElement.videoWidth;
-          sHeight = sWidth / canvasRatio;
-          sy = (videoElement.videoHeight - sHeight) / 2;
-          sx = 0;
-        }
-        dx = 0;
-        dy = 0;
-        dWidth = offscreenCanvas.width;
-        dHeight = offscreenCanvas.height;
-
-        ctx.drawImage(videoElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+        // Gambar stiker AR dari canvas WebGL di atas video
         ctx.drawImage(glCanvas, 0, 0);
 
         const dataURL = offscreenCanvas.toDataURL('image/png');
@@ -429,33 +425,20 @@
     const glCanvas = mindarThree.renderer.domElement;
     const videoElement = mindarThree.video;
     
-    function drawFrame() {
+   function drawFrame() {
+      // Pastikan renderer me-render frame terbaru
       renderer.render(scene, camera);
       
-      const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
-      const canvasRatio = recordingCanvas.width / recordingCanvas.height;
+      // Bersihkan kanvas perekaman terlebih dahulu
+      recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-      let sx, sy, sWidth, sHeight;
-      let dx, dy, dWidth, dHeight;
+      // Gambar video dari elemen video dengan mirroring yang benar
+      recordingCtx.save();
+      recordingCtx.scale(-1, 1);
+      recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
+      recordingCtx.restore();
 
-      if (videoRatio > canvasRatio) {
-        sHeight = videoElement.videoHeight;
-        sWidth = sHeight * canvasRatio;
-        sx = (videoElement.videoWidth - sWidth) / 2;
-        sy = 0;
-      } else {
-        sWidth = videoElement.videoWidth;
-        sHeight = sWidth / canvasRatio;
-        sy = (videoElement.videoHeight - sHeight) / 2;
-        sx = 0;
-      }
-      dx = 0;
-      dy = 0;
-      dWidth = recordingCanvas.width;
-      dHeight = recordingCanvas.height;
-      
-      recordingCtx.drawImage(videoElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-
+      // Gambar stiker AR dari canvas WebGL di atas video
       recordingCtx.drawImage(glCanvas, 0, 0);
 
       videoRecordLoop = requestAnimationFrame(drawFrame);
@@ -730,9 +713,15 @@
     } else {
       texture = await getRasterTextureCached(def.src);
     }
+    
+    // Membalikkan tekstur agar stiker terlihat benar
+    texture.repeat.x = -1;
+    texture.offset.x = 1;
+    
     const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
     const mesh = new THREE.Mesh(geo, mat);
+
     mesh.position.set(0, 0, 0);
     const adjustedPos = getAdjustedPosition(def);
     mesh.userData.mobileOffset = adjustedPos;
@@ -979,6 +968,17 @@
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
     
+    const videoElement = mindarThree.video;
+    if (videoElement) {
+        videoElement.style.transform = 'scaleX(-1)';
+        console.log('Video element mirrored via CSS.');
+    }
+    
+    if (scene) {
+        scene.scale.x = -1;
+        console.log('Scene mirrored to correct tracking.');
+    }
+
     await setupWatermark();
 
     if (statusEl) statusEl.textContent = 'Tracking face...';
@@ -997,7 +997,7 @@
     }
     try {
       const v = mindarThree.video;
-      if (v) { v.setAttribute('playsinline', ''); v.playsInline = true; v.muted = true; v.autoplay = true; if (isMobile) { v.style.objectFit = 'cover'; } }
+      if (v) { v.setAttribute('playsinline', ''); v.playsinline = true; v.muted = true; v.autoplay = true; if (isMobile) { v.style.objectFit = 'cover'; } }
     } catch (_) {}
   } catch (err) {
     console.error('MindAR start failed:', err);
