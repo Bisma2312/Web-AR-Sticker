@@ -145,7 +145,7 @@
       watermarkMesh.visible = true;
 
       const positionX = 0;
-      const positionY = -0.5;
+      const positionY = -0.6;
       const positionZ = -1;
       watermarkMesh.position.set(positionX, positionY, positionZ);
       
