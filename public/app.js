@@ -74,15 +74,14 @@ function App() {
         try {
           qrRef.current.innerHTML = '';
           const viewerUrl = `${location.origin}${data.viewerUrl}`;
-          // Di sini perubahan untuk menggunakan GoQR.me API dengan ukuran 300x300
-          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(viewerUrl)}`;
+          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(viewerUrl)}&margin=5`;
           
           const qrImage = document.createElement('img');
           qrImage.src = qrCodeUrl;
           qrImage.alt = 'QR Code to open AR viewer';
-          // Sesuaikan juga style width dan height
-          qrImage.style.width = '300px';
-          qrImage.style.height = '300px';
+          // Sesuaikan style width dan height agar cocok
+          qrImage.style.width = '200px';
+          qrImage.style.height = '200px';
           
           qrRef.current.appendChild(qrImage);
         } catch (e) {
@@ -394,7 +393,7 @@ function App() {
       {/* Styles untuk QR container */}
       <style>{`
         .qr-container {
-            max-width: 300px; /* Ukuran container disesuaikan dengan QR code */
+            max-width: 200px; /* Ukuran container disesuaikan dengan QR code dan margin */
             margin: 0 auto; /* Menengahkan container secara horizontal */
         }
         
@@ -495,7 +494,7 @@ function App() {
                 {uploading ? 'Uploading...' : 'Upload & Generate QR'}
               </button>
             </div>
-          <div className="row-center subtle">Use HTTPS on mobile to allow camera.</div>
+          <div className="row-center subtle">Use HTTP on mobile to allow camera.</div>
           {errorMsg ? (
             <div className="row-center" style={{color:'#b00020', fontWeight:600}}>{errorMsg}</div>
           ) : null}

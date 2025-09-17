@@ -16,22 +16,6 @@
   if (!id || !t) { if (statusEl) statusEl.textContent = 'Missing token'; return; }
   if (!container) { if (statusEl) statusEl.textContent = 'AR container not found'; return; }
 
-  async function checkLinkStatus() {
-  try {
-    const response = await fetch(imgUrl);
-    if (!response.ok) {
-      if (response.status === 403 || response.status === 404) {
-        if (statusEl) statusEl.textContent = 'Expired or Invalid Link.';
-         if (container) container.style.display = 'none';
-        return false;
-      }
-    }
-    return true;
-  } catch (error) {
-    if (statusEl) statusEl.textContent = 'Failed to load sticker.';
-    return false;
-  }
-
   // Mobile detection and viewport adjustment (moved to top)
   const isMobile = /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
