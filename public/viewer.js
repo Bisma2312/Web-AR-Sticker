@@ -125,6 +125,9 @@
       const watermarkTexture = await new THREE.TextureLoader().loadAsync('/assets/logo-watermark.png');
       watermarkTexture.encoding = THREE.sRGBEncoding;
 
+      watermarkTexture.repeat.x = -1;
+      watermarkTexture.offset.x = 1;
+
       const watermarkMaterial = new THREE.MeshBasicMaterial({
         map: watermarkTexture,
         transparent: true,
