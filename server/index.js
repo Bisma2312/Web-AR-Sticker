@@ -47,7 +47,8 @@ app.post(['/api/upload', '/upload'], ensureSupabaseConfigured, upload.single('im
 
     const token = randomToken();
     const tokenHash = hashToken(token);
-    const expiresAt = null; // consider adding expiry if desired
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
     await insertUploadRow({ id, storagePath, tokenHash, expiresAt });
 
     const imageUrl = `/api/image/${id}?t=${token}`;
