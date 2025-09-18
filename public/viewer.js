@@ -32,15 +32,17 @@
   let recordingCtx;
   let videoRecordLoop; // Loop untuk menggambar video selama perekaman
   
-  // Elemen pratinjau baru
+  // Elemen pratinjau
   const previewContainer = document.getElementById('preview-container');
   const previewImage = document.getElementById('preview-image');
   const previewVideo = document.getElementById('preview-video');
   const saveButton = document.getElementById('save-button');
   const shareButton = document.getElementById('share-button');
-  const closeButton = document.getElementById('close-preview-button');
+  const closeButton = document.getElementById('close-button'); // Menggunakan ID yang benar dari HTML yang direvisi
 
-  const modeToggleBtn = document.getElementById('mode-toggle-btn');
+  // Elemen UI baru
+  const photoToggleBtn = document.getElementById('photo-toggle-btn');
+  const videoToggleBtn = document.getElementById('video-toggle-btn');
   const captureBtn = document.getElementById('capture-btn');
 
   async function setupMobileCamera(facingMode = currentFacingMode) {
@@ -450,7 +452,6 @@
 
     mediaRecorder.start();
     isRecording = true;
-    captureBtn.textContent = '⏹️ Stop';
     if (statusEl) statusEl.textContent = 'Recording...';
     console.log('Video recording started');
   }
@@ -481,6 +482,7 @@
         previewImage.style.display = 'none';
         saveButton.onclick = () => saveFile(dataUrl, `ar-video.${dataUrl.includes('mp4') ? 'mp4' : 'webm'}`);
         shareButton.onclick = () => shareVideoFile(dataUrl);
+        previewVideo.play();
     }
     
     previewContainer.classList.remove('hidden');
@@ -534,13 +536,8 @@
           const response = await fetch(url);
           const blob = await response.blob();
           
-          // Cek mimeType yang dihasilkan, dan konversi jika perlu
           let targetMime = blob.type;
           if (blob.type.includes('webm')) {
-              // WebM tidak didukung, maka kita harus mengonversi
-              // Karena FFmpeg tidak digunakan, konversi ini tidak bisa dilakukan di browser.
-              // Solusi ini harus mengandalkan browser yang mendukung berbagi WebM, yang jarang terjadi.
-              // Oleh karena itu, kita akan coba dengan mimeType 'video/webm' yang paling umum
               targetMime = 'video/webm';
               console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
           }
@@ -559,42 +556,62 @@
       }
   }
 
+  // Event listener untuk tombol keluar baru
   closeButton.addEventListener('click', () => {
       previewContainer.classList.add('hidden');
       if (previewVideo) {
           previewVideo.pause();
-          previewVideo.removeAttribute('src');
+          previewVideo.removeAttribute('src'); // Menghapus sumber untuk memuat ulang
           previewVideo.load();
       }
   });
 
 
-  if (modeToggleBtn) {
-    modeToggleBtn.addEventListener('click', () => {
-      if (isRecording) { stopVideoRecording(); }
-      if (currentMode === 'photo') {
-        currentMode = 'video';
-        modeToggleBtn.textContent = '📹';
-        if (statusEl) statusEl.textContent = 'Mode: Video';
-      } else {
-        currentMode = 'photo';
-        modeToggleBtn.textContent = '📷';
-        if (statusEl) statusEl.textContent = 'Mode: Photo';
-      }
-      console.log('Mode switched to:', currentMode);
-      captureBtn.textContent = currentMode === 'photo' ? 'Capture' : 'Record';
-    });
+  // Fungsionalitas baru untuk tombol toggle Photo/Video
+  function setMode(mode) {
+    currentMode = mode;
+    if (mode === 'photo') {
+      photoToggleBtn.classList.add('active');
+      videoToggleBtn.classList.remove('active');
+      if (statusEl) statusEl.textContent = 'Mode: Photo';
+    } else if (mode === 'video') {
+      videoToggleBtn.classList.add('active');
+      photoToggleBtn.classList.remove('active');
+      if (statusEl) statusEl.textContent = 'Mode: Video';
+    }
   }
 
-  if (captureBtn) {
-    captureBtn.addEventListener('click', () => {
-      if (currentMode === 'photo') {
-        takePhoto();
+  // Pengaturan mode awal
+  setMode('photo');
+
+  // Menangani klik pada tombol toggle "Photo"
+  photoToggleBtn.addEventListener('click', () => {
+    if (currentMode !== 'photo') {
+      setMode('photo');
+      console.log('Mode: Photo');
+    }
+  });
+
+  // Menangani klik pada tombol toggle "Video"
+  videoToggleBtn.addEventListener('click', () => {
+    if (currentMode !== 'video') {
+      setMode('video');
+      console.log('Mode: Video');
+    }
+  });
+  
+  // Menangani klik pada tombol "Capture"
+  captureBtn.addEventListener('click', () => {
+    if (currentMode === 'photo') {
+      takePhoto();
+    } else if (currentMode === 'video') {
+      if (isRecording) {
+        stopVideoRecording();
       } else {
-        if (isRecording) { stopVideoRecording(); } else { startVideoRecording(); }
+        startVideoRecording();
       }
-    });
-  }
+    }
+  });
 
   const loadCanvasTexture = (url) => new Promise((resolve, reject) => {
     const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = () => {

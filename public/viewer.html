@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <title>AR Viewer</title>
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script>
     <style>
@@ -80,38 +83,15 @@
       #selection .bar { position: absolute; top: -40px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
       #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; font-size: 12px; }
       #preview-container {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    flex-direction: column;
-}
-
-#preview-container.hidden {
-    display: none;
-}
-
-#preview-frame {
-    background: #1f2937;
-    padding: 1rem;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    max-width: 90vw;
-    max-height: 90vh;
-}
-
-#preview-frame img, #preview-frame video {
-    max-width: 100%;
-    max-height: 75vh;
-    object-fit: contain;
-    border-radius: 8px;
-}
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      flex-direction: column;
+    }
     </style>
   </head>
   <body>
@@ -119,9 +99,9 @@
     <div class="top">
       <div class="chip">AR Viewer</div>
       <div style="display:flex; gap:8px; align-items:center; pointer-events:auto;">
-        <button id="mode-toggle-btn" class="chip button">📷</button>
+        <!-- <button id="mode-toggle-btn" class="chip button">📷</button>
         <button id="capture-btn" class="chip button">Capture</button>
-        <button id="cam-btn" class="chip button">Switch Cam</button>
+        <button id="cam-btn" class="chip button">Switch Cam</button> -->
         <div id="status" class="chip">Loading...</div>
       </div>
     </div>
@@ -137,17 +117,51 @@
         <img src="/stickers/glasses.svg" alt="Uploaded Image" />
       </button>
     </div>
+    <div class="bottom-bar">
+      <div class="switch-bar">
+        <button id="photo-toggle-btn" class="switch-btn active">
+            <img src="assets/AR Scene/Photo Icon.png" alt="Photo Mode">
+            Photo
+        </button>
+        <button id="video-toggle-btn" class="switch-btn">
+            <img src="assets/AR Scene/Video Icon.png" alt="Video Mode">
+            Video
+        </button>
+      </div>
+      <div class="capture-button-container">
+        <button id="capture-btn" class="capture-btn"></button>
+      </div>
+      <!-- <div class="switch-cam-container">
+        <button id="cam-btn" class="chip button switch-cam-btn">
+            <img src="assets/AR Scene/switch.png" alt="Switch Camera">
+        </button>
+      </div> -->
+    </div>
     
-    <div id="preview-container" class="hidden">
+  <div id="preview-container" class="hidden">
+    <div class="blur-overlay"></div>
+    <div class="preview-content">
       <div id="preview-frame">
         <img id="preview-image" style="display: none;">
         <video id="preview-video" controls autoplay muted playsinline style="display: none;"></video>
-        <button id="save-button" class="chip button">Simpan</button>
-        <button id="share-button" class="chip button">Bagikan</button>
-        <button id="close-preview-button" class="chip button">Tutup</button>
+        <button id="close-button" class="close-btn">
+          <img src="assets/AR Scene/close button.png" alt="Close">
+        </button>
+      </div>
+      <div class="button-group">
+        <button id="save-button" class="action-btn save-btn save-button-img">
+          <span>Save</span>
+        </button>
+        <button id="share-button" class="action-btn share-btn share-button-img">
+          <span>Share</span>
+        </button>
       </div>
     </div>
+  </div>
 
+    <div class="loader-overlay hidden">
+        <div class="spinner"></div>
+    </div>
     <script src="/viewer.js"></script>
   </body>
 </html>
