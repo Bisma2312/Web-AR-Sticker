@@ -920,7 +920,7 @@
     const inst = instances[active];
     if (gesture.mode === 'drag' && pointers.size === 1) {
       const dx = e.clientX - gesture.start.x; const dy = e.clientY - gesture.start.y;
-      inst.offset.x = gesture.base.x + dx * getGestureSensitivity();
+      inst.offset.x = gesture.base.x - dx * getGestureSensitivity();
       inst.offset.y = gesture.base.y - dy * getGestureSensitivity();
       applyTransforms(inst); updateSelectionOverlay();
     } else if (gesture.mode === 'transform' && pointers.size === 2) {
