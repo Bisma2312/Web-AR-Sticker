@@ -495,7 +495,6 @@
     if (!isRecording || !mediaRecorder) return;
     mediaRecorder.stop();
     isRecording = false;
-    captureBtn.textContent = 'Record';
     if (videoRecordLoop) {
       cancelAnimationFrame(videoRecordLoop);
       videoRecordLoop = null;
