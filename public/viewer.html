@@ -77,11 +77,11 @@
       .tray .control-btn:hover { background: #374151; }
 
       #selection { position: fixed; pointer-events: none; z-index: 9999; border: 1px dashed rgba(255,255,255,0.6); }
-      #selection .handle { position: absolute; width: 28px; height: 28px; background: #60a5fa; border-radius: 50%; border: 2px solid #0f172a; pointer-events: auto; display: grid; place-items: center; color: #0b1020; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+      #selection .handle { position: absolute; width: 28px; height: 28px; background: #E2232A; border-radius: 50%; border: 2px solid #e5e7eb; pointer-events: auto; display: grid; place-items: center; color: #e5e7eb; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
       #selection .h-rotate { top: -14px; right: -14px; cursor: grab; }
       #selection .h-scale { bottom: -14px; right: -14px; cursor: nwse-resize; }
       #selection .bar { position: absolute; top: -40px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
-      #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; font-size: 12px; }
+      #selection .btn { pointer-events: auto; padding: 4px 8px; border-radius: 8px; background: #E2232A; border: 1px solid #e5e7eb; color: #e5e7eb; font-size: 12px; font-family: 'Lexend', sans-serif;}
       #preview-container {
       position: fixed;
       inset: 0;
@@ -119,6 +119,7 @@
     </div>
     <div class="bottom-bar">
       <div class="switch-bar">
+        <div id="countdown-timer">00:30</div>
         <button id="photo-toggle-btn" class="switch-btn active">
             <img src="assets/AR Scene/Photo Icon.png" alt="Photo Mode">
             Photo

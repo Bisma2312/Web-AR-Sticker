@@ -45,6 +45,39 @@
   const videoToggleBtn = document.getElementById('video-toggle-btn');
   const captureBtn = document.getElementById('capture-btn');
 
+   const countdownTimerEl = document.getElementById('countdown-timer'); // ** Tambahkan ini **
+  let countdownInterval; // ** Tambahkan ini **
+  let countdownTime = 30; // ** Tambahkan ini **
+
+  // ** Fungsi untuk memulai hitung mundur **
+  function startCountdown() {
+      countdownTime = 30;
+      countdownTimerEl.textContent = '00:30';
+      countdownTimerEl.style.display = 'block';
+
+      countdownInterval = setInterval(() => {
+          countdownTime--;
+          const minutes = Math.floor(countdownTime / 60);
+          const seconds = countdownTime % 60;
+          const formattedTime = `0${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+          countdownTimerEl.textContent = formattedTime;
+
+          if (countdownTime <= 0) {
+              clearInterval(countdownInterval);
+              // Panggil fungsi untuk menghentikan perekaman
+              stopVideoRecording();
+              countdownTimerEl.style.display = 'none';
+          }
+      }, 1000);
+  }
+
+  // ** Fungsi untuk menghentikan hitung mundur **
+  function stopCountdown() {
+      clearInterval(countdownInterval);
+      countdownTimerEl.style.display = 'none';
+  }
+
+
   async function setupMobileCamera(facingMode = currentFacingMode) {
     if (!isMobile) return true;
     try {
@@ -454,6 +487,8 @@
     isRecording = true;
     if (statusEl) statusEl.textContent = 'Recording...';
     console.log('Video recording started');
+    // ** Tambahkan panggilan ke fungsi startCountdown di sini **
+    startCountdown();
   }
 
   function stopVideoRecording() {
@@ -466,6 +501,7 @@
       videoRecordLoop = null;
     }
     console.log('Video recording stopped');
+    stopCountdown();
   }
   
   // Fungsi baru untuk menampilkan pratinjau
@@ -563,6 +599,7 @@
           previewVideo.pause();
           previewVideo.removeAttribute('src'); // Menghapus sumber untuk memuat ulang
           previewVideo.load();
+          stopCountdown();
       }
   });
 

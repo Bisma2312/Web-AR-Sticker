@@ -688,3 +688,19 @@ canvas#editorCanvas {
 .action-btn:hover {
   transform: scale(1.05);
 }
+
+#countdown-timer {
+  position: absolute;
+  top: -40px; /* Sesuaikan posisi vertikal sesuai kebutuhan */
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Lexend', sans-serif;
+  font-size: 2rem;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 0 5px rgba(0,0,0,0.5);
+  display: none; /* Atur agar tidak terlihat secara default */
+  pointer-events: none; /* Agar tidak menghalangi klik pada elemen di bawahnya */
+}
+
+
