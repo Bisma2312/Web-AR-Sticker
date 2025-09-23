@@ -11,9 +11,17 @@ function App() {
   const qrRef = React.useRef(null);
   const imgRef = React.useRef(null);
   const overlayRef = React.useRef(null);
-  // no undo stack needed with single-click picker
-
-    const token = localStorage.getItem("token");
+  
+  // Menambahkan deklarasi variabel status yang hilang
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [progress, setProgress] = React.useState({ text: '' });
+  const [activeFile, setActiveFile] = React.useState(null);
+  const onClose = () => {
+    setActiveFile(null);
+    setUploadResp(null);
+  };
+  
+  const token = localStorage.getItem("token");
   if (!token) {
     window.location.href = "home.html";
   }
@@ -22,15 +30,12 @@ function App() {
   const now = new Date();
   const date = now.getDate();
 
-  // Compare expiry time with current time
   if (now.getDate() != item.expired) {
-    console.log("date",date);
-    // If expired, remove item and return null
+    console.log("date", date);
     localStorage.removeItem("token");
     window.location.href = "home.html";
   }
 
-  // Wait for ONNX Runtime Web
   const waitForOrt = React.useCallback(() => {
     if (window.ort && window.ort.InferenceSession) return Promise.resolve();
     return new Promise((resolve, reject) => {
@@ -54,16 +59,26 @@ function App() {
     setClickPoint(null);
   };
 
+  const onDrop = (event) => {
+    event.preventDefault();
+    if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+      const file = event.dataTransfer.files[0];
+      onChoose({ target: { files: [file] } });
+    }
+  };
+
+  const onDragOver = (event) => {
+    event.preventDefault();
+  };
+
   const doUpload = async () => {
     if (!file) return;
     setErrorMsg('');
     setUploading(true);
+    setIsProcessing(true); // Mengatur status pemrosesan
     setUploadStage('uploading');
     
     try {
-      // Simulate upload progress
-      setTimeout(() => setUploadStage('processing'), 1000);
-      
       const fd = new FormData();
       fd.append('image', file);
       const resp = await fetch('/api/upload', { method: 'POST', body: fd });
@@ -79,37 +94,14 @@ function App() {
         return;
       }
       
-      setUploadStage('generating');
-      setTimeout(() => setUploadStage('finalizing'), 500);
+      setUploadStage('processing');
+      await new Promise(res => setTimeout(res, 500));
       
       const data = await resp.json();
       setUploadResp(data);
       
-      // Defer QR generation until page fully loaded to avoid forced layout warnings
-      const genQR = () => {
-        if (!qrRef.current) return;
-        try {
-          qrRef.current.innerHTML = '';
-          const viewerUrl = `${location.origin}${data.viewerUrl}`;
-          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(viewerUrl)}&margin=5`;
-          
-          const qrImage = document.createElement('img');
-          qrImage.src = qrCodeUrl;
-          qrImage.alt = 'QR Code to open AR viewer';
-          // Sesuaikan style width dan height agar cocok
-          qrImage.style.width = '200px';
-          qrImage.style.height = '200px';
-          
-          qrRef.current.appendChild(qrImage);
-        } catch (e) {
-          console.error('QR generation failed:', e);
-        }
-      };
-      if (document.readyState === 'complete') {
-        requestAnimationFrame(() => requestAnimationFrame(genQR));
-      } else {
-        window.addEventListener('load', genQR, { once: true });
-      }
+      setUploadStage('generating');
+      await new Promise(res => setTimeout(res, 500));
       
       setUploadStage('complete');
     } catch (error) {
@@ -119,9 +111,36 @@ function App() {
       setTimeout(() => {
         setUploading(false);
         setUploadStage('');
+        setIsProcessing(false); // Mengatur status pemrosesan menjadi false
       }, 1000);
     }
   };
+
+  // Logika untuk membuat QR code
+  React.useEffect(() => {
+    if (uploadResp && qrRef.current) {
+      const genQR = () => {
+        if (!qrRef.current) return;
+        try {
+          qrRef.current.innerHTML = '';
+          const viewerUrl = `${location.origin}${uploadResp.viewerUrl}`;
+          new QRCode(qrRef.current, {
+            text: viewerUrl,
+            width: 250,
+            height: 250,
+          });
+        } catch (e) {
+          console.error('QR generation failed:', e);
+        }
+      };
+
+      if (document.readyState === 'complete') {
+        requestAnimationFrame(() => requestAnimationFrame(genQR));
+      } else {
+        window.addEventListener('load', genQR, { once: true });
+      }
+    }
+  }, [uploadResp]);
 
   const doBgRemove = async () => {
     if (!file) return;
@@ -134,7 +153,6 @@ function App() {
       const { canvas, blob } = await removeBackgroundWithU2Net(img, { clickPoint, overlay: overlayRef.current, displayImgEl: imgRef.current });
       const newUrl = URL.createObjectURL(blob);
       setPreviewUrl(newUrl);
-      // Replace file with processed PNG (preserve name stem)
       const stem = (file.name || 'image').replace(/\.[^.]+$/, '');
       const newFile = new File([blob], `${stem}-nobg.png`, { type: 'image/png' });
       setFile(newFile);
@@ -155,7 +173,6 @@ function App() {
     window.location.href = "home.html";
   }
 
-  // Overlay sizing (used for pick marker)
   React.useEffect(() => {
     const cvs = overlayRef.current;
     const img = imgRef.current;
@@ -179,7 +196,6 @@ function App() {
     return () => window.removeEventListener('resize', syncSize);
   }, [previewUrl, refining]);
 
-  // Pick-subject: single click capture and draw marker
   React.useEffect(() => {
     const cvs = overlayRef.current; if (!cvs) return;
     const ctx = cvs.getContext('2d');
@@ -204,14 +220,10 @@ function App() {
     }
     function down(e){ if (!refining) return; const p = pt(e); setClickPoint(p); drawMarker(p); e.preventDefault(); }
     cvs.addEventListener('pointerdown', down);
-    // redraw on resize or state change
     drawMarker(clickPoint);
     return () => { cvs.removeEventListener('pointerdown', down); };
   }, [refining, clickPoint]);
 
-  // no scribble clear/undo in single-click mode
-
-  // Helpers for background removal
   function loadImageElement(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -222,7 +234,6 @@ function App() {
     });
   }
 
-  // U2Netp inference and alpha compose
   async function removeBackgroundWithU2Net(imgEl, opts) {
     const maxSide = 1280;
     const scale = Math.min(1, maxSide / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
@@ -234,7 +245,6 @@ function App() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(imgEl, 0, 0, w, h);
 
-    // Run U2Netp at 320x320
     const inputSize = 320;
     const inCvs = document.createElement('canvas');
     inCvs.width = inputSize; inCvs.height = inputSize;
@@ -243,7 +253,6 @@ function App() {
     const imgData = inCtx.getImageData(0, 0, inputSize, inputSize);
 
     const nchw = new Float32Array(1 * 3 * inputSize * inputSize);
-    // RGB to NCHW, [0,1]
     for (let y=0; y<inputSize; y++) {
       for (let x=0; x<inputSize; x++) {
         const idx = (y*inputSize + x) * 4;
@@ -265,12 +274,11 @@ function App() {
     const results = await session.run(feeds);
     const outName = session.outputNames[0];
     const out = results[outName];
-    const outDims = out.dims; // expect [1,1,320,320]
+    const outDims = out.dims;
     const outW = outDims[outDims.length-1];
     const outH = outDims[outDims.length-2];
-    const sal = out.data; // Float32Array length outW*outH
+    const sal = out.data;
 
-    // Normalize to 0..255 and resize to w x h
     const salImage = new ImageData(outW, outH);
     for (let i=0;i<outW*outH;i++) {
       const v = Math.max(0, Math.min(1, sal[i]));
@@ -288,27 +296,23 @@ function App() {
     su.drawImage(salCvs, 0, 0, w, h);
     const salUpImg = su.getImageData(0, 0, w, h);
 
-    // Threshold and optionally keep component connected to click
-    const thr = 128; // 0.5
+    const thr = 128;
     const bin = new Uint8ClampedArray(w*h);
     for (let i=0;i<w*h;i++) bin[i] = salUpImg.data[i*4] >= thr ? 1 : 0;
 
     let mask = bin;
     const pick = opts && opts.clickPoint ? opts.clickPoint : null;
     if (pick) {
-      // Map click from display to image working size
       const dispRect = opts.displayImgEl.getBoundingClientRect();
       const px = Math.round(pick.x / dispRect.width * w);
       const py = Math.round(pick.y / dispRect.height * h);
       mask = keepConnected(mask, w, h, px, py);
     } else {
-      mask = keepLargestComponent(mask, w, h);
+      mask = keepLargestComponent(bin, w, h);
     }
 
-    // Feather edges
     const alpha = featherMask(mask, w, h, 2);
 
-    // Compose RGBA
     const outImg = ctx.getImageData(0, 0, w, h);
     for (let i=0;i<w*h;i++) outImg.data[i*4+3] = alpha[i];
     ctx.putImageData(outImg, 0, 0);
@@ -316,20 +320,17 @@ function App() {
     return { canvas, blob };
   }
 
-  // Create/cached U2Net session
   const getU2NetSession = (() => {
     let sessionPromise = null;
     return function(){
       if (sessionPromise) return sessionPromise;
       const ort = window.ort;
-      // Prefer local model; instruct user to place file. If missing, surface error.
       const modelUrl = '/models/u2netp.onnx';
       sessionPromise = ort.InferenceSession.create(modelUrl, { executionProviders: ['wasm'] });
       return sessionPromise;
     }
   })();
 
-  // Connected component utilities
   function keepConnected(bin, w, h, sx, sy) {
     const inside = (x,y)=> x>=0 && y>=0 && x<w && y<h;
     const idx = (x,y)=> y*w + x;
@@ -383,15 +384,12 @@ function App() {
   }
 
   function featherMask(bin, w, h, radius) {
-    // simple box blur on edges
     const alpha = new Uint8ClampedArray(w*h);
-    // initialize 0/255
     for (let i=0;i<w*h;i++) alpha[i] = bin[i] ? 255 : 0;
     if (radius<=0) return alpha;
     const tmp = new Uint8ClampedArray(w*h);
     const passes = Math.max(1, radius);
     for (let p=0;p<passes;p++) {
-      // horizontal
       for (let y=0;y<h;y++) {
         for (let x=0;x<w;x++) {
           let s=0, c=0;
@@ -399,7 +397,6 @@ function App() {
           tmp[y*w+x] = s/c|0;
         }
       }
-      // vertical
       for (let y=0;y<h;y++) {
         for (let x=0;x<w;x++) {
           let s=0, c=0;
@@ -411,155 +408,119 @@ function App() {
     return alpha;
   }
 
+  const getProgressState = () => {
+    switch(uploadStage) {
+      case 'uploading': return { text: 'Uploading...', width: '25%' };
+      case 'processing': return { text: 'Processing...', width: '50%' };
+      case 'generating': return { text: 'Generating QR...', width: '75%' };
+      case 'complete': return { text: 'Complete!', width: '100%' };
+      default: return { text: '', width: '0%' };
+    }
+  }
+  const progressState = getProgressState();
+
   return (
     <div className="app">
       <header class="header">
-      <img src="assets/Main Page/main-image.png" alt="Recharge Room" class="logo-left"/>
-      <img src="assets/Main Page/logo-left.png" alt="Copilot" class="logo-left"/>
-      <div class="header-right">
-        <button class="back-btn">
-          <img src="assets/Main Page/back.png" alt="Back"></img>
-        </button>
-        <button class="logout-btn" onClick={logout}>Log out</button>
-        <img src="assets/Main Page/logo-right.png" alt="Lenovo" class="logo-right"/>
-      </div>
-      </header>
-      {/* Styles untuk QR container */}
-      <style>{`
-        .qr-container {
-            max-width: 200px; /* Ukuran container disesuaikan dengan QR code dan margin */
-            margin: 0 auto; /* Menengahkan container secara horizontal */
-        }
-        
-        .qr {
-            width: 100%;
-            height: auto;
-            aspect-ratio: 1 / 1;
-            overflow: hidden;
-            border: 1px solid #ddd; /* Menambahkan border untuk visualisasi */
-        }
-      `}</style>
-      <div className="landing">
-         <div className="upload-card">
-          <div className="row-center">
-            <h2 style={{margin:0}}>WebAR Sticker Uploader</h2>
-          </div>
-          <div className="row-center subtle">Upload an image, then scan the QR to open AR.</div>
-          <div className="upload-flex"></div>
-            {/* Dropzone Kiri */}
-      <div className="dropzone">
-        <label>
-          <img src="assets/Main Page/image icon.png" alt="Upload Icon" />
-          <p style={{margin:0}}>Drag and drop file here or click to browse</p>
-          <input type="file" accept="image/*" onChange={onChoose} style={{display:'none'}} disabled={uploading} />
-        </label>
-            <div className="preview">
-              {previewUrl ? (
-                <>
-                  <img ref={imgRef} src={previewUrl} alt="Preview"/>
-                  {refining && (
-                    <canvas ref={overlayRef} style={{ position:'absolute', inset:0, touchAction:'none', cursor:'crosshair' }} />
-                  )}
-                </>
-              ) : null}
-            </div>
-            
-            {/* Upload Progress Indicator */}
-            {uploading && (
-              <div className="upload-progress">
-                <div className="progress-bar">
-                  <div className={`progress-fill ${uploadStage}`}></div>
-                </div>
-                <div className="progress-text">
-                  {uploadStage === 'uploading' && 'Uploading image to server...'}
-                  {uploadStage === 'processing' && 'Processing image and preparing storage...'}
-                  {uploadStage === 'generating' && 'Generating QR code and viewer...'}
-                  {uploadStage === 'finalizing' && 'Finalizing setup...'}
-                  {uploadStage === 'complete' && '✅ Upload complete! QR code ready.'}
-                </div>
-                <div className="progress-steps">
-                  <div className={`step ${uploadStage === 'uploading' || uploadStage === 'processing' || uploadStage === 'generating' || uploadStage === 'finalizing' || uploadStage === 'complete' ? 'active' : ''}`}>
-                    <span className="step-icon">📤</span>
-                    <span className="step-text">Upload</span>
-                  </div>
-                  <div className={`step ${uploadStage === 'processing' || uploadStage === 'generating' || uploadStage === 'finalizing' || uploadStage === 'complete' ? 'active' : ''}`}>
-                    <span className="step-icon">⚙️</span>
-                    <span className="step-text">Process</span>
-                  </div>
-                  <div className={`step ${uploadStage === 'generating' || uploadStage === 'finalizing' || uploadStage === 'complete' ? 'active' : ''}`}>
-                    <span className="step-icon">🔗</span>
-                    <span className="step-text">Generate</span>
-                  </div>
-                  <div className={`step ${uploadStage === 'complete' ? 'active' : ''}`}>
-                    <span className="step-icon">✅</span>
-                    <span className="step-text">Complete</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Success Message */}
-            {uploadStage === 'complete' && !uploading && (
-              <div className="success-message">
-                <div className="success-icon">🎉</div>
-                <div className="success-text">Image uploaded successfully! Your AR sticker is ready.</div>
-              </div>
-            )}
-            
-            <div className="row-center">
-              <label className="btn" style={{cursor:'pointer'}}>
-                <input type="file" accept="image/*" onChange={onChoose} style={{display:'none'}} disabled={uploading} />
-                Choose Image
-              </label>
-              {!refining ? (
-                <>
-                  <button className="btn" onClick={()=> { setRefining(true); setClickPoint(null); }} disabled={!file || uploading || !previewUrl}>
-                    Pick Subject
-                  </button>
-                  <button className="btn" onClick={doBgRemove} disabled={!file || bgRemoving || uploading}>
-                    {bgRemoving ? 'Removing...' : 'Remove Background'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="pill" style={{display:'flex',gap:8,alignItems:'center'}}>
-                    <span>Tap image to choose subject</span>
-                  </div>
-                  <button className="btn" onClick={()=> setClickPoint(null)} disabled={!clickPoint}>Clear</button>
-                  <button className="btn" onClick={doBgRemove} disabled={bgRemoving}>{bgRemoving ? 'Applying...' : 'Apply'}</button>
-                  <button className="btn" onClick={()=>{ setRefining(false); setClickPoint(null); }}>Cancel</button>
-                </>
-              )}
-              <button className="primary" onClick={doUpload} disabled={!file || uploading}>
-                {uploading ? 'Uploading...' : 'Upload & Generate QR'}
-              </button>
-            </div>
-          <div className="row-center subtle">Use HTTP on mobile to allow camera.</div>
-          {errorMsg ? (
-            <div className="row-center" style={{color:'#b00020', fontWeight:600}}>{errorMsg}</div>
-          ) : null}
+       <div class="logo-group">
+         <img src="assets/Main Page/main-image.png" alt="Recharge Room" class="logo-left"/>
+         <img src="assets/Main Page/logo-left.png" alt="Copilot" class="logo-copilot"/>
+       </div>
+        <div class="header-right">
+          <button class="back-btn" onClick={() => window.location.reload()}>
+            <img src="assets/Main Page/back.png" alt="Back"></img>
+          </button>
+          <button class="logout-btn" onClick={logout}>Log out</button>
+          <img src="assets/Main Page/logo-right.png" alt="Lenovo" class="logo-right"/>
         </div>
-
-          <div className="spacer"></div>
-          
-          {/* QR Code and Results Section */}
-          <div className="results-section">
-            <div className="qr-container">
-              <div className="qr" ref={qrRef}></div>
-            </div>
-            
-            {uploadResp && (
-              <div className="results-links">
-                <a className="btn primary" href={uploadResp.viewerUrl} target="_blank" rel="noreferrer">
-                  Open AR Viewer
-                </a>
-                <div className="url-display">
-                  <span className="url-label">Viewer URL:</span>
-                  <span className="url-text">{location.origin}{uploadResp.viewerUrl}</span>
+      </header>
+      
+      <div className="landing">
+        <div className="upload-card">
+          <div className="upload-flex">
+            {/* Dropzone Kiri */}
+            <div className="dropzone-container" onDrop={onDrop} onDragOver={onDragOver}>
+              <div className={`dropzone ${previewUrl ? 'has-image' : ''}`}>
+                <label>
+                  {!previewUrl && (
+                    <>
+                      <img src="assets/Main Page/image icon.png" alt="Upload Icon" />
+                     <p style={{margin:0, color: '#3b5cd0'}}>Drag and drop file here or click to browse</p>
+                    </>
+                  )}
+                  <input type="file" accept="image/*" onChange={onChoose} style={{display:'none'}} disabled={uploading} />
+                </label>
+                {previewUrl && (
+                  <div className="preview-image" style={{backgroundImage:`url(${previewUrl})`}} ref={imgRef}>
+                      {refining && (
+                          <canvas className="overlay-canvas" ref={overlayRef} style={{cursor:'crosshair'}}></canvas>
+                      )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Tombol Aksi (di bawah dropzone) */}
+              <div className="actions">
+                <div className="row-center">
+                  {!refining ? (
+                    <>
+                      <button className="btn" onClick={doBgRemove} disabled={!file || bgRemoving || uploading}>
+                        {bgRemoving ? 'Removing...' : 'Remove Background'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="pill" style={{display:'flex',gap:8,alignItems:'center'}}>
+                        <span>Tap image to choose subject</span>
+                      </div>
+                      <button className="btn" onClick={()=> setClickPoint(null)} disabled={!clickPoint}>Clear</button>
+                      <button className="btn" onClick={doBgRemove} disabled={bgRemoving}>{bgRemoving ? 'Applying...' : 'Apply'}</button>
+                      <button className="btn" onClick={()=>{ setRefining(false); setClickPoint(null); }}>Cancel</button>
+                    </>
+                  )}
+                  <button className="btn" onClick={doUpload} disabled={!file || uploading}>
+                    {uploading ? 'Uploading...' : 'Upload & Generate QR'}
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* QR Code dan Preview Kanan */}
+            <div className="qr-container-main">
+              {/* <p style={{marginBottom: '10px'}}>Scan the QR Code to try the filter!</p> */}
+              
+              {/* Ini adalah elemen QR code yang sekarang selalu ada di halaman */}
+                <div className="qr" ref={qrRef}></div>
+
+              {/* Loading bar sekarang ditampilkan secara kondisional di atas QR code */}
+              {(uploading || isProcessing) && (
+                <div className="loading-bar-container">
+                  <div className="loading-bar-fill" style={{ width: progressState.width }}></div>
+                  <span className="loading-text">{progressState.text}</span>
+                </div>
+              )}
+              
+             <p style={{marginTop: '12px', color: '#3b5cd0'}}>Scan the QR Code to try the filter!</p>
+             <p style={{marginTop: '12px', color: '#3b5cd0'}}>Use HTTPS on mobile to allow camera.</p>
+
+              {/* Still Needed For Debuging Purpose */}
+              {/* {uploadResp && (
+                <div className="results-links">
+                  <a className="btn primary" href={uploadResp.viewerUrl} target="_blank" rel="noreferrer">
+                    Open AR Viewer
+                  </a>
+                  <div className="url-display">
+                    <span className="url-label">Viewer URL:</span>
+                    <span className="url-text">{location.origin}{uploadResp.viewerUrl}</span>
+                  </div>
+                </div>
+              )} */}
+            </div>
           </div>
+          
+          {errorMsg ? (
+            <div className="row-center" style={{color:'#b00020', fontWeight:600, marginTop:'20px'}}>{errorMsg}</div>
+          ) : null}
         </div>
       </div>
       <div className="footer">Edit stickers only in the AR page.</div>

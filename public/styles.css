@@ -34,10 +34,20 @@
   height: 50px;
 }
 
+.logo-copilot {
+  height: 25px;
+}
+
 .header-right {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center; /* Menjaga logo tetap sejajar di tengah secara vertikal */
+  gap: 10px; /* Atur jarak antar logo sesuai kebutuhan */
 }
 
 .back-btn {
@@ -174,13 +184,6 @@ canvas#editorCanvas {
 
 /* Ganti class landing */
 .landing {
-  /* Hapus atau ganti properti ini agar konten tidak terpusat secara grid */
-  /* min-height: calc(100vh - 0px); */
-  /* display: grid; */
-  /* place-items: center; */
-  /* padding: 20px 12px 28px; */
-  
-  /* Tambahkan properti untuk menyesuaikan dengan mockup */
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -233,16 +236,36 @@ canvas#editorCanvas {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
+.dropzone-container {
+    flex-basis: 55%;
+    min-width: 250px;
+}
+
+/* Dropzone dengan gambar pratinjau */
 .dropzone {
-  flex: 1;
-  min-width: 250px;
-  border: 2px dashed #aaa;
-  border-radius: 10px;
-  padding: 30px;
+  position: relative;
+  border: 2px dashed #6a5acd;
+  border-radius: 12px;
   text-align: center;
   cursor: pointer;
+  height: 250px;
+  overflow: hidden; /* Penting untuk memastikan gambar tidak keluar batas */
+}
+
+/* Konten default (ikon + teks) */
+.dropzone > label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .dropzone img {
@@ -250,25 +273,45 @@ canvas#editorCanvas {
   margin-bottom: 10px;
 }
 
-.qr-preview {
-  flex: 1;
-  min-width: 250px;
-  border: 2px solid #aaa;
-  border-radius: 10px;
-  padding: 20px;
-  text-align: center;
+/* Menyembunyikan konten default saat ada gambar */
+.dropzone.has-image > label {
+  display: none;
 }
 
-.qr-box {
-  margin-top: 10px;
-  width: 150px;
-  height: 150px;
-  background: #eee;
-  margin-left: auto;
-  margin-right: auto;
-  border-radius: 8px;
+/* Styling untuk gambar pratinjau */
+.preview-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
+.qr-container-main {
+    flex-basis: 40%;
+    min-width: 200px;
+    text-align: center;
+}
+
+.qr-container-main .qr {
+    display: flex; /* Mengatur display flexbox pada parent */
+    flex-direction: column;
+    align-items: center; /* Memusatkan QR code secara vertikal */
+    width: 250px; /* Ukuran yang ideal untuk QR code */
+    height: 250px;
+    margin: auto; /* Memastikan QR code tetap di tengah */
+}
+
+/* Pastikan tag <img> di dalam .qr juga responsif */
+.qr img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
 /* Actions */
 .actions {
   margin-top: 20px;
@@ -294,6 +337,7 @@ canvas#editorCanvas {
 
 /*default*/
 .card {
+  position: relative;
   width: 100%;
   max-width: 720px;
   background: var(--panel);
@@ -307,7 +351,7 @@ canvas#editorCanvas {
 .stack { display: grid; gap: 12px; }
 .row-center { 
   display: flex; 
-  gap: 10px; 
+  gap: 30px; 
   align-items: center; 
   justify-content: center; 
   flex-wrap: wrap; 
@@ -533,17 +577,15 @@ canvas#editorCanvas {
   overflow-wrap: break-word;
 }
 
-/* QR Code Container */
 .qr {
-  width: 128px;
-  height: 128px;
-  background: #0b1020;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  margin: 0 auto;
-  max-width: 100%;
-  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 250px;
+  width: 250px;
+  background-color: white;
+  border: 2px solid  #311B92; /* Ubah ketebalan border dari 5px menjadi 3px */
+  border-radius: 8px; /* Tambahkan properti ini untuk membuat sudut membulat */
 }
 
 .qr canvas {
@@ -551,6 +593,14 @@ canvas#editorCanvas {
   max-height: 100%;
   width: auto;
   height: auto;
+}
+
+.qr-wrapper {
+  padding: 3px;
+  background-color: #8A2BE2;
+  display: flex; /* Mengatur display flexbox */
+  justify-content: center; /* Memposisikan QR code di tengah secara horizontal */
+  align-items: center; /* Memposisikan QR code di tengah secara vertikal */
 }
 
 /* Results Section */
@@ -607,31 +657,40 @@ canvas#editorCanvas {
   font-family: monospace;
 }
 
-/* Disabled state styles */
-.btn:disabled, button:disabled {
-  opacity: 0.5;
+/* Gaya dasar untuk semua tombol yang akan menggunakan gambar latar */
+.btn, .primary {
+  /* Hapus background-color jika ada */
+  background-color: transparent;
+
+  /* Atur gambar latar */
+  background-image: url('assets/Main Page/Button_1.png');
+
+  /* Ukuran latar agar menutupi area tombol */
+  background-size: 100% 100%; /* Menyesuaikan lebar dan tinggi tombol */
+  background-repeat: no-repeat;
+  background-position: center;
+
+  /* Atur padding agar teks tombol tidak tertutup gambar dan pas di tengah */
+  padding: 10px 20px; /* Sesuaikan sesuai kebutuhan agar teks terlihat bagus */
+
+  /* Atur warna teks agar kontras dengan gambar tombol */
+  color: white; /* Contoh: jika gambar tombol gelap */
+
+  /* Hapus border jika ada */
+  border: none;
+
+  /* Sesuaikan tinggi baris jika teks tombol terlihat aneh */
+  line-height: 1;
+
+  /* Tambahkan efek transisi jika ingin */
+  transition: background-size 0.2s ease-in-out;
+}
+
+/* Jika ada tombol yang disabled, pastikan terlihat berbeda */
+.btn:disabled, .primary:disabled {
+  opacity: 0.6; /* Membuat tombol terlihat sedikit transparan */
   cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* Loading state for buttons */
-.btn.loading, button.loading {
-  position: relative;
-  color: transparent;
-}
-
-.btn.loading::after, button.loading::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
-  border: 2px solid transparent;
-  border-top: 2px solid currentColor;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+  background-size: 100% 100%; /* Kembali ke ukuran normal saat disabled */
 }
 
 @keyframes spin {
@@ -897,4 +956,37 @@ canvas#editorCanvas {
   pointer-events: none; /* Agar tidak menghalangi klik pada elemen di bawahnya */
 }
 
+/* Styling untuk loading bar baru */
+.loading-bar-container {
+    position: relative;
+    width: 100%;
+    height: 20px;
+    background-image: url('assets/Main Page/Loading bar empty.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 20px 0;
+}
 
+.loading-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-image: url('assets/Main Page/Loading Bar fill.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: left center;
+    transition: width 0.5s ease-in-out;
+    border-radius: 12px;
+}
+
+.loading-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    font-weight: bold;
+    color: #0b1652;
+}
