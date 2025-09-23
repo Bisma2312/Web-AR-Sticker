@@ -13,6 +13,23 @@ function App() {
   const overlayRef = React.useRef(null);
   // no undo stack needed with single-click picker
 
+    const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "home.html";
+  }
+
+  const item = JSON.parse(token);
+  const now = new Date();
+  const date = now.getDate();
+
+  // Compare expiry time with current time
+  if (now.getDate() != item.expired) {
+    console.log("date",date);
+    // If expired, remove item and return null
+    localStorage.removeItem("token");
+    window.location.href = "home.html";
+  }
+
   // Wait for ONNX Runtime Web
   const waitForOrt = React.useCallback(() => {
     if (window.ort && window.ort.InferenceSession) return Promise.resolve();
@@ -131,6 +148,12 @@ function App() {
       setBgRemoving(false);
     }
   };
+
+  const logout = async()=>{
+    const token = localStorage.getItem("token");
+    localStorage.removeItem("token");
+    window.location.href = "home.html";
+  }
 
   // Overlay sizing (used for pick marker)
   React.useEffect(() => {
@@ -390,6 +413,17 @@ function App() {
 
   return (
     <div className="app">
+      <header class="header">
+      <img src="assets/Main Page/main-image.png" alt="Recharge Room" class="logo-left"/>
+      <img src="assets/Main Page/logo-left.png" alt="Copilot" class="logo-left"/>
+      <div class="header-right">
+        <button class="back-btn">
+          <img src="assets/Main Page/back.png" alt="Back"></img>
+        </button>
+        <button class="logout-btn" onClick={logout}>Log out</button>
+        <img src="assets/Main Page/logo-right.png" alt="Lenovo" class="logo-right"/>
+      </div>
+      </header>
       {/* Styles untuk QR container */}
       <style>{`
         .qr-container {
@@ -406,13 +440,19 @@ function App() {
         }
       `}</style>
       <div className="landing">
-        <div className="card stack">
+         <div className="upload-card">
           <div className="row-center">
             <h2 style={{margin:0}}>WebAR Sticker Uploader</h2>
           </div>
           <div className="row-center subtle">Upload an image, then scan the QR to open AR.</div>
-
-          <div className="stack">
+          <div className="upload-flex"></div>
+            {/* Dropzone Kiri */}
+      <div className="dropzone">
+        <label>
+          <img src="assets/Main Page/image icon.png" alt="Upload Icon" />
+          <p style={{margin:0}}>Drag and drop file here or click to browse</p>
+          <input type="file" accept="image/*" onChange={onChoose} style={{display:'none'}} disabled={uploading} />
+        </label>
             <div className="preview">
               {previewUrl ? (
                 <>

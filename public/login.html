@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recharge Room - Login</title>
+  <link rel="stylesheet" href="/login.css">
+</head>
+<body>
+  <!-- Background -->
+  <div class="background"></div>
+
+  <!-- Logo kiri atas -->
+  <img src="assets/Main Page/logo-left.png" alt="Copilot PC" class="logo logo-left">
+
+  <!-- Logo kanan atas -->
+  <img src="assets/Main Page/logo-right.png" alt="Lenovo" class="logo logo-right">
+
+  <!-- Konten -->
+  <div class="container">
+    <!-- Form Login -->
+    <div class="login-card">
+      <h1 >Log in</h1>
+      <p class="subtitle">Please enter your details.</p>
+
+      <form id="loginForm">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="Your Email" required>
+
+        <label>Password</label>
+        <div class="password-field">
+          <input id="passwordInput" type="password" placeholder="Enter your Password" required>
+          <span id="togglePassword" class="toggle-password">👁</span>
+        </div>
+        <button type="submit" class="image-login-btn">
+          <span>Log in</span>
+          <img src="assets/Main Page/Button_1.png" alt="Login">
+        </button>
+      </form>
+      <p id="error" style="color: red; display: none;">Invalid credentials</p>
+    </div>
+
+    <!-- Logo Recharge Room -->
+    <div class="hero-logo">
+      <img src="assets/Main Page/main-image.png" alt="The Recharge Room">
+    </div>
+  </div>
+<script src="/login.js"></script>
+</body>
+</html>

@@ -5,7 +5,87 @@
   --accent: #60a5fa;
   --muted: #6b7280;
 }
+/* Background full screen */
+.background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0b1652; /* fallback biru */
+  background-image: url('/assets/Main Page/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -1; /* biar tetap di belakang */
+}
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 25px;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+}
 
+.logo-left {
+  height: 50px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.back-btn {
+    /* Menghilangkan border dan background bawaan */
+    border: none;
+    background-color: transparent; 
+    
+    /* Mengatur ukuran dan bentuk tombol */
+    width: 40px; 
+    height: 40px;
+    border-radius: 50%; /* Membuat tombol menjadi lingkaran */
+    cursor: pointer;
+    
+    /* Menggunakan gambar 'circle button.png' sebagai latar belakang */
+    background-image: url('assets/Main Page/circle button.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    /* Memposisikan ikon 'back.png' di tengah tombol */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Menambahkan efek hover */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.back-btn img {
+    /* Mengatur ukuran ikon agar pas di dalam lingkaran */
+    width: 50%; /* Sesuaikan persentase ini jika terlalu besar atau kecil */
+    height: auto;
+    object-fit: contain;
+}
+
+.logout-btn {
+  background: #d32f2f;
+  color: #fff;
+  border: none;
+  border-radius: 25px;
+  padding: 8px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.logo-right {
+  height: 60px;
+}
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -21,13 +101,13 @@ body {
   min-height: 100vh;
 }
 
-.header {
+/* .header {
   padding: 12px 16px;
   background: var(--panel);
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
+} */
 
 .header h1 { font-size: 18px; margin: 0; }
 
@@ -92,13 +172,127 @@ canvas#editorCanvas {
   button, .btn { padding: 8px; font-size: 14px; }
 }
 
-/* Landing page centered layout */
+/* Ganti class landing */
 .landing {
-  min-height: calc(100vh - 0px);
-  display: grid;
-  place-items: center;
-  padding: 20px 12px 28px;
+  /* Hapus atau ganti properti ini agar konten tidak terpusat secara grid */
+  /* min-height: calc(100vh - 0px); */
+  /* display: grid; */
+  /* place-items: center; */
+  /* padding: 20px 12px 28px; */
+  
+  /* Tambahkan properti untuk menyesuaikan dengan mockup */
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
 }
+
+/* Ubah .card menjadi upload-card */
+.card {
+  width: 100%;
+  max-width: 900px; /* Sesuaikan lebar maksimum sesuai mockup */
+  background: #fff; /* Latar belakang putih */
+  border: none; /* Hapus border */
+  border-radius: 15px; /* Sesuaikan radius */
+  padding: 30px; /* Sesuaikan padding */
+  box-shadow: 0px 4px 20px rgba(0,0,0,0.2); /* Tambahkan shadow */
+}
+/*new*/
+/* Upload Card */
+.upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 100px;
+  padding-bottom: 40px;
+}
+
+/* Upload Card */
+.upload-card {
+  background: #fff;
+  border-radius: 15px;
+  padding: 30px;
+  max-width: 900px;
+  width: 100%;
+  box-shadow: 0px 4px 20px rgba(0,0,0,0.2);
+}
+
+.filter-input {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 2px solid #ccc;
+  font-size: 1rem;
+}
+
+/* Flex layout untuk Dropzone dan QR Preview */
+.upload-flex {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dropzone {
+  flex: 1;
+  min-width: 250px;
+  border: 2px dashed #aaa;
+  border-radius: 10px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.dropzone img {
+  height: 50px;
+  margin-bottom: 10px;
+}
+
+.qr-preview {
+  flex: 1;
+  min-width: 250px;
+  border: 2px solid #aaa;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.qr-box {
+  margin-top: 10px;
+  width: 150px;
+  height: 150px;
+  background: #eee;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 8px;
+}
+
+/* Actions */
+.actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.btn.red {
+  background: #d32f2f;
+  color: #fff;
+  border: none;
+  border-radius: 25px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.btn.red:hover {
+  transform: scale(1.05);
+}
+
+/*default*/
 .card {
   width: 100%;
   max-width: 720px;

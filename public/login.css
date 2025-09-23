@@ -1,0 +1,192 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #0c1445;
+  color: #333;
+  min-height: 100vh;
+}
+
+/* Background clouds (optional asset) */
+.background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/assets/Main Page/background.png'); /* sesuai asset */
+  background-size: cover;
+  background-position: center;
+  z-index: -1;
+}
+
+/* Logo atas */
+.logo {
+  position: fixed;
+  top: 30px;
+  width: 130px;
+  height: auto;
+  z-index: 10;
+}
+
+.logo-left {
+  left: 5px;
+}
+
+.logo-right {
+  right: 5px;
+}
+
+/* Container utama */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  min-height: 100vh;
+  gap: 50px;
+  flex-wrap: wrap;
+}
+
+/* Card Login */
+.login-card {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  width: 350px;
+  max-width: 100%;
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
+}
+
+.login-card h1 {
+  color: #3b5cd0;
+  font-size: 3rem;
+  margin-bottom: 5px;
+}
+
+.login-card .subtitle {
+  color: #3b5cd0;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.login-card label {
+  display: block;
+  margin: 10px 0 5px;
+  font-size: 0.9rem;
+  font-weight: bolder;
+  color: #3b5cd0;
+}
+
+input[type="email"]::placeholder {
+  color: #3b5cd0;
+  font-weight: bold;
+  opacity: 1;
+}
+
+input[type="password"]::placeholder {
+  color: #3b5cd0;
+  font-weight: bold;
+  opacity: 1;
+}
+
+.login-card input {
+  width: 100%;
+  padding: 8px; /* Mengurangi padding vertikal dan horizontal */
+  border-radius: 6px; /* Mengurangi radius sudut */
+  border: 1px solid #ccc;
+  background-color: #a8bfe2;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2); /* Mengurangi efek bayangan */
+  margin-bottom: 10px; /* Mengurangi jarak antar input */
+  font-size: 0.8rem; /* Mengurangi ukuran font */
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field .toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Tombol Login */
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background: #e63946;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+/* Gaya untuk kontainer tombol (image-login-btn) */
+.image-login-btn {
+    /* Mengubah lebar tombol menjadi 50% */
+    width: 50%; 
+    /* Menempatkan tombol di tengah */
+    margin: 20px auto; 
+    /* Hapus gaya lain yang tidak perlu seperti padding, border */
+    padding: 0;
+    position: relative;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: block;
+}
+
+/* Gaya untuk gambar di dalam tombol */
+.image-login-btn img {
+    /* Pastikan gambar mengisi lebar kontainer tombol yang baru */
+    width: 100%; 
+    height: auto; 
+    display: block; 
+    transition: transform 0.2s ease;
+}
+
+.image-login-btn span {
+    position: absolute; /* Teks akan berada di atas gambar */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Memastikan teks benar-benar di tengah */
+    color: white; /* Warna teks */
+    font-size: 1rem;
+    font-weight: bold;
+    pointer-events: none; /* Penting agar klik tetap mengarah ke tombol, bukan teks */
+    z-index: 1; 
+}
+
+.login-btn:hover {
+  background: #c82333;
+}
+
+/* Logo Recharge Room */
+.hero-logo img {
+  max-width: 500px;
+  width: 100%;
+  height: auto;
+}
+
+/* Responsif */
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-logo img {
+    max-width: 280px;
+    margin-top: 20px;
+  }
+}
