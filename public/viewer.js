@@ -20,7 +20,8 @@
   const isMobile = /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
   const rotationSign = -1;
-  let currentFacingMode = useRear ? 'environment' : 'user';
+  // Perubahan: Memaksa kamera ke mode 'user'
+  let currentFacingMode = 'user';
   
   // Variabel untuk menyimpan ukuran stiker yang diunggah
   let uploadedStickerSize = [1.1, 1.1]; 
@@ -86,7 +87,8 @@
       }
       const constraints = { 
         video: { 
-          facingMode: { ideal: facingMode },
+          // Perubahan: Memaksa ke 'user' di sini juga
+          facingMode: { ideal: 'user' },
           width: { ideal: 640, max: 1280 },
           height: { ideal: 480, max: 720 }
         } 
@@ -201,7 +203,8 @@
     const mindarConfig = {
       container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
       camera: {
-        facingMode: { ideal: currentFacingMode },
+        // Perubahan: Memaksa ke 'user' saat inisialisasi awal
+        facingMode: { ideal: 'user' },
         width: { ideal: isMobile ? 640 : 1280 },
         height: { ideal: isMobile ? 480 : 720 },
         aspectRatio: { ideal: 4/3 }
@@ -276,7 +279,8 @@
 
   async function restartAR(nextFacingMode){
     try { if (statusEl) statusEl.textContent = 'Switching camera...'; } catch(_){}
-    const targetFacingMode = nextFacingMode || currentFacingMode;
+    // Perubahan: Abaikan `nextFacingMode` dan selalu atur ke 'user'
+    const targetFacingMode = 'user';
     if (isMobile) {
       const cameraReady = await setupMobileCamera(targetFacingMode);
       if (!cameraReady) {
@@ -753,7 +757,6 @@
         currentPos.y = Math.max(-maxOffset, Math.min(maxOffset, currentPos.y));
         currentPos.z = Math.max(-0.1, Math.min(0.3, currentPos.z));
         //currentPos.z = 0;
-        applyTransforms(inst);
       }
     });
   }
