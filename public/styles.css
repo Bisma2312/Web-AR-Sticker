@@ -697,6 +697,15 @@ canvas#editorCanvas {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.bottom-buttons-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    pointer-events: none; /* Keep this property to prevent blocking UI elements */
+}
+
 .bottom-bar {
   position: fixed;
   bottom: 100px; /* Atur jarak dari bawah. Sesuaikan nilainya jika diperlukan */
@@ -782,27 +791,26 @@ canvas#editorCanvas {
   pointer-events: auto;
 }
 
+/* Penyesuaian untuk tombol switch camera */
 .switch-cam-btn {
-  width: 50px;
-  height: 50px;
-  background: rgba(0, 0, 0, 0.4);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: background 0.2s ease;
+    width: 50px; /* Atur lebar tombol */
+    height: 50px; /* Atur tinggi tombol */
+    border-radius: 50%; /* Membuat tombol menjadi bulat */
+    background-image: url('assets/AR Scene/Button kiri kanan.png'); /* Gambar latar belakang tombol */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    padding: 0;
+    cursor: pointer;
 }
 
 .switch-cam-btn img {
-  width: 30px;
-  height: 30px;
-  filter: invert(1);
-}
-
-.switch-cam-btn:hover {
-  background: rgba(0, 0, 0, 0.6);
+    width: 20px; /* Ukuran icon di dalam tombol */
+    height: 20px;
 }
 
 .tray {

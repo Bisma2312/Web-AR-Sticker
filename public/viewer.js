@@ -207,19 +207,19 @@ import { MindARThree } from 'mindar-face-three';
   try {
     const camBtn = document.getElementById('cam-btn');
     if (camBtn) {
-      function updateLabel(){ camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam'; }
-      updateLabel();
+      // function updateLabel(){ camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam'; }
+      // updateLabel();
       camBtn.addEventListener('click', async () => {
         if (camBtn.disabled) return;
         try {
           camBtn.disabled = true;
-          camBtn.textContent = 'Switching...';
+          // camBtn.textContent = 'Switching...';
           console.log('Attempting camera switch from', currentFacingMode, 'to', (currentFacingMode === 'environment') ? 'user' : 'environment');
 
           await mindarThree.switchCamera();
           
           currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
-          updateLabel();
+          // updateLabel();
           if (statusEl) statusEl.textContent = `Camera switched to ${currentFacingMode}`;
           console.log('Camera switch successful:', currentFacingMode);
         } catch (error) {
