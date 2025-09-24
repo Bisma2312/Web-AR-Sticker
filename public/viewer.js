@@ -237,7 +237,7 @@
       camera: {
         facingMode: { ideal: currentFacingMode },
         width: { ideal: isMobile ? 640 : 1280 },
-        height: { ideal: 480 : 720 },
+        height: { ideal: isMobile ? 480 : 720 }, // **PERBAIKAN: Menggunakan operator ternary yang benar**
         aspectRatio: { ideal: 4/3 }
       }
     };
@@ -647,7 +647,7 @@
       photoToggleBtn.classList.add('active');
       videoToggleBtn.classList.remove('active');
       if (statusEl) statusEl.textContent = 'Mode: Photo';
-    } else if (mode === 'video') {
+    } else if (currentMode === 'video') {
       videoToggleBtn.classList.add('active');
       photoToggleBtn.classList.remove('active');
       if (statusEl) statusEl.textContent = 'Mode: Video';
