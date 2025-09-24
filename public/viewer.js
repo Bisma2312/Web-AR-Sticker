@@ -120,7 +120,7 @@
       }
       const constraints = { 
         video: { 
-          facingMode: { ideal: facingMode },
+          facingMode: { exact: facingMode }, // **PERUBAHAN: Menggunakan exact**
           width: { ideal: 640, max: 1280 },
           height: { ideal: 480, max: 720 }
         } 
@@ -235,7 +235,7 @@
     const mindarConfig = {
       container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
       camera: {
-        facingMode: { ideal: currentFacingMode },
+        facingMode: { exact: currentFacingMode }, // **PERUBAHAN: Menggunakan exact**
         width: { ideal: isMobile ? 640 : 1280 },
         height: { ideal: isMobile ? 480 : 720 }, // **PERBAIKAN: Menggunakan operator ternary yang benar**
         aspectRatio: { ideal: 4/3 }
@@ -327,7 +327,7 @@
       const mindarConfig2 = {
         container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
         camera: {
-          facingMode: { ideal: currentFacingMode },
+          facingMode: { exact: currentFacingMode }, // **PERUBAHAN: Menggunakan exact**
           width: { ideal: isMobile ? 640 : 1280 },
           height: { ideal: isMobile ? 480 : 720 },
           aspectRatio: { ideal: 4/3 }
@@ -967,7 +967,7 @@
       applyTransforms(inst); updateSelectionOverlay();
     } else if (gesture.mode === 'transform' && pointers.size === 2) {
       const [a,b] = [...pointers.values()];
-      const dx = b.x - a.x, dy = b.y - a.y; const dist = Math.hypot(dx, dy); const ang = Math.atan2(dy, dx);
+      const dx = b.x - a.x, dy = b.y - a.y; const dist = Math.hypot(dx, dy); const ang = Math.atan2(dy, ddx);
       const scaleMul = dist / (gesture.baseDist || 1);
       inst.scale = Math.max(0.2, Math.min(3, gesture.baseScale * scaleMul));
       inst.rotation = gesture.baseRot + rotationSign * (ang - (gesture.baseAng || 0));
