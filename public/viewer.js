@@ -3,8 +3,6 @@
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
   const t = qs.get('t');
-  const cam = qs.get('cam'); // 'front' | 'rear'
-  const useRear = cam === 'rear';
   const imgUrl = id && t ? `/api/image/${id}?t=${t}` : null;
   
   // Debug logging for troubleshooting
@@ -52,7 +50,6 @@
   const isMobile = /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
   const rotationSign = -1;
-  let currentFacingMode = useRear ? 'environment' : 'user';
   
   // Variabel untuk menyimpan ukuran stiker yang diunggah
   let uploadedStickerSize = [1.1, 1.1]; 
@@ -111,35 +108,6 @@
       if (countdownTimerEl) countdownTimerEl.style.display = 'none';
   }
 
-
-  async function setupMobileCamera(facingMode = currentFacingMode) {
-    if (!isMobile) return true;
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera API not available');
-      }
-      const constraints = { 
-        video: { 
-          facingMode: { exact: facingMode }, // **PERUBAHAN: Menggunakan exact**
-          width: { ideal: 640, max: 1280 },
-          height: { ideal: 480, max: 720 }
-        } 
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        const settings = videoTrack.getSettings();
-        console.log('Camera settings:', settings);
-        console.log('Requested facing mode:', facingMode, 'Actual:', settings.facingMode);
-      }
-      stream.getTracks().forEach(track => track.stop());
-      return true;
-    } catch (error) {
-      console.error('Mobile camera setup failed:', error);
-      if (statusEl) statusEl.textContent = `Camera ${facingMode} not available: ${error.message}`;
-      return false;
-    }
-  }
 
   if (!window.isSecureContext && location.protocol !== 'https:') {
     if (statusEl) statusEl.textContent = 'HTTPS required for camera access';
@@ -231,50 +199,74 @@
     }
   }
   
-  try {
-    const mindarConfig = {
-      container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
-      camera: {
-        facingMode: { exact: currentFacingMode }, // **PERUBAHAN: Menggunakan exact**
-        width: { ideal: isMobile ? 640 : 1280 },
-        height: { ideal: isMobile ? 480 : 720 }, // **PERBAIKAN: Menggunakan operator ternary yang benar**
-        aspectRatio: { ideal: 4/3 }
+  async function initializeMindAR() {
+      setCameraStatus(`Starting Front camera...`);
+      try {
+          const mindarConfig = {
+              container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
+              camera: {
+                  facingMode: { exact: 'user' }, 
+                  width: { ideal: isMobile ? 640 : 1280 },
+                  height: { ideal: isMobile ? 480 : 720 },
+                  aspectRatio: { ideal: 4/3 }
+              }
+          };
+          mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig);
+          ({ renderer, scene, camera } = mindarThree);
+
+          const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+          scene.add(light);
+
+          const startPromise = mindarThree.start();
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
+          await Promise.race([startPromise, timeoutPromise]);
+          
+          if (!mindarThree.video || !mindarThree.video.srcObject) {
+              throw new Error("MindAR failed to provide a video stream.");
+          }
+
+          const videoTrack = mindarThree.video.srcObject.getVideoTracks()[0];
+          const actualFacingMode = videoTrack.getSettings().facingMode;
+
+          if (actualFacingMode === 'user') {
+              mindarThree.video.style.transform = 'scaleX(-1)';
+              scene.scale.x = -1;
+          } else {
+              mindarThree.video.style.transform = '';
+              scene.scale.x = 1;
+          }
+          
+          if (camera) {
+            camera.add(watermarkMesh);
+          }
+          
+          setCameraStatus(`${getCameraLabel(actualFacingMode)}`);
+          
+          if (renderer && renderer.setPixelRatio) {
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          }
+
+          if (renderer && renderer.setAnimationLoop) {
+              renderer.setAnimationLoop(() => {
+                  try {
+                      renderer.render(scene, camera);
+                      updateSelectionOverlay();
+                      updateStickerPositions();
+                  } catch (error) {
+                      console.error('Render loop error:', error);
+                  }
+              });
+          }
+          
+          console.log('Camera started with actual facing mode:', actualFacingMode);
+          return actualFacingMode;
+      } catch (err) {
+          console.error(`MindAR initialization failed:`, err);
+          setCameraStatus(`Camera failed: ${err.message}`);
+          return null;
       }
-    };
-    mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig);
-    ({ renderer, scene, camera } = mindarThree);
-    if (!renderer || !scene || !camera) {
-      throw new Error('MindAR failed to initialize properly');
-    }
-  } catch (error) {
-    console.error('MindAR initialization failed:', error);
-    if (statusEl) statusEl.textContent = 'AR initialization failed';
-    return;
   }
 
-  try {
-    const maxDpr = 2;
-    if (renderer && renderer.setPixelRatio) {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
-    }
-  } catch (_) {}
-  
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-  scene.add(light);
-  camera.add(watermarkMesh);
-
-  function snapshotInstances(){
-    const snap = [];
-    try {
-      Object.values(instances || {}).forEach(inst => {
-        snap.push({
-          key: inst.key, visible: inst.visible, scale: inst.scale,
-          rotation: inst.rotation, offset: { ...(inst.offset || {x:0,y:0}) },
-        });
-      });
-    } catch(_) {}
-    return snap;
-  }
 
   async function disposeCurrent(){
     try { if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null); } catch(_){}
@@ -309,84 +301,19 @@
   }
 
   async function restartAR(nextFacingMode){
-    setCameraStatus(`Switching to ${getCameraLabel(nextFacingMode)} camera...`);
-    
-    const targetFacingMode = nextFacingMode || currentFacingMode;
-    if (isMobile) {
-      const cameraReady = await setupMobileCamera(targetFacingMode);
-      if (!cameraReady) {
-        if (statusEl) statusEl.textContent = `Cannot switch to ${targetFacingMode} camera`;
-        return false;
-      }
-    }
     const snap = snapshotInstances();
     await disposeCurrent();
     await new Promise(resolve => setTimeout(resolve, 500));
-    currentFacingMode = targetFacingMode;
-    try {
-      const mindarConfig2 = {
-        container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
-        camera: {
-          facingMode: { exact: currentFacingMode }, // **PERUBAHAN: Menggunakan exact**
-          width: { ideal: isMobile ? 640 : 1280 },
-          height: { ideal: isMobile ? 480 : 720 },
-          aspectRatio: { ideal: 4/3 }
-        }
-      };
-      mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig2);
-      ({ renderer, scene, camera } = mindarThree);
-      if (!renderer || !scene || !camera) {
-        throw new Error('MindAR failed to initialize after camera switch');
-      }
-      const light2 = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      scene.add(light2);
-      await mindarThree.start();
-      
-      const videoTrack = mindarThree.video.srcObject.getVideoTracks()[0];
-      const actualFacingMode = videoTrack.getSettings().facingMode;
-      setCameraStatus(`${getCameraLabel(actualFacingMode)}`);
-      
-      const videoElement = mindarThree.video;
-      if (actualFacingMode === 'user') {
-          videoElement.style.transform = 'scaleX(-1)';
-          scene.scale.x = -1;
-      } else {
-          videoElement.style.transform = '';
-          scene.scale.x = 1;
-      }
-
-      if (mindarThree.video && isMobile) {
-        const video = mindarThree.video;
-        video.setAttribute('playsinline', ''); video.playsInline = true; video.muted = true; video.autoplay = true;
-        video.style.objectFit = 'cover';
-      }
-      try {
-        const maxDpr = 2;
-        if (renderer && renderer.setPixelRatio) {
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, maxDpr));
-        }
-      } catch(_){}
+    
+    const finalFacingMode = await initializeMindAR(nextFacingMode);
+    
+    if (finalFacingMode) {
+      setCameraStatus(`${getCameraLabel(finalFacingMode)}`);
       await rebuildInstancesFromSnapshot(snap);
-      if (renderer && renderer.setAnimationLoop) {
-        renderer.setAnimationLoop(() => {
-          try {
-            if (renderer && scene && camera) {
-              renderer.render(scene, camera);
-              updateSelectionOverlay();
-              updateStickerPositions();
-            }
-          }
-          catch (error) {
-            console.error('Render loop error (restart):', error);
-            if (statusEl) statusEl.textContent = 'Render error occurred';
-          }
-        });
-      }
-      console.log('Camera switch successful:', actualFacingMode);
+      console.log('Camera switch successful:', finalFacingMode);
       return true;
-    } catch (error) {
-      console.error('Camera switch failed:', error);
-      if (statusEl) statusEl.textContent = `Camera switch failed: ${error.message}`;
+    } else {
+      console.warn('Camera switch failed, staying on', nextFacingMode);
       return false;
     }
   }
@@ -394,17 +321,7 @@
   try {
     const camBtn = document.getElementById('cam-btn');
     if (camBtn) {
-      function updateLabel(){ camBtn.textContent = (currentFacingMode === 'environment') ? 'Front Cam' : 'Rear Cam'; }
-      updateLabel();
-      camBtn.addEventListener('click', async () => {
-        if (camBtn.disabled) return;
-        try { camBtn.disabled = true; camBtn.textContent = 'Switching...'; } catch(_){}
-        const next = (currentFacingMode === 'environment') ? 'user' : 'environment';
-        console.log('Attempting camera switch from', currentFacingMode, 'to', next);
-        const success = await restartAR(next);
-        if (success) { updateLabel(); console.log('Camera switch completed successfully'); } else { updateLabel(); console.warn('Camera switch failed, staying on', currentFacingMode); }
-        try { camBtn.disabled = false; } catch(_){}
-      });
+      camBtn.style.display = 'none'; // Sembunyikan tombol karena kita hanya akan memakai kamera depan
     }
   } catch(e) { console.error('Error setting up camera button:', e); }
 
@@ -607,27 +524,26 @@
       }
       
       try {
-          const response = await fetch(url);
-          const blob = await response.blob();
-          
-          let targetMime = blob.type;
-          if (blob.type.includes('webm')) {
-              targetMime = 'video/webm';
-              console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
+              const response = await fetch(url);
+              const blob = await response.blob();
+              
+              let targetMime = blob.type;
+              if (blob.type.includes('webm')) {
+                  targetMime = 'video/webm';
+                  console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
+              }
+              const file = new File([blob], `ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
+
+              await navigator.share({
+                  files: [file],
+                  title: 'AR Video',
+                  text: 'Lihat video AR saya!',
+              });
+              if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
+          } catch (error) {
+              console.error('Gagal berbagi:', error);
+              if (statusEl) statusEl.textContent = `Berbagi gagal: ${error.message}`;
           }
-
-          const file = new File([blob], `ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
-
-          await navigator.share({
-              files: [file],
-              title: 'AR Video',
-              text: 'Lihat video AR saya!',
-          });
-          if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
-      } catch (error) {
-          console.error('Gagal berbagi:', error);
-          if (statusEl) statusEl.textContent = `Berbagi gagal: ${error.message}`;
-      }
   }
 
   closeButton.addEventListener('click', () => {
@@ -1062,53 +978,10 @@
   });
 
   if (statusEl) statusEl.textContent = 'Starting camera...';
-  if (isMobile) {
-    if (statusEl) statusEl.textContent = 'Setting up mobile camera...';
-    const cameraReady = await setupMobileCamera();
-    if (!cameraReady) {
-      if (statusEl) statusEl.textContent = 'Camera setup failed - check permissions';
-      return;
-    }
-  }
-  try {
-    setCameraStatus(`Starting ${getCameraLabel(currentFacingMode)} camera...`);
-    const startPromise = mindarThree.start();
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
-    await Promise.race([startPromise, timeoutPromise]);
-    
-    const videoElement = mindarThree.video;
-    const videoTrack = videoElement.srcObject.getVideoTracks()[0];
-    const actualFacingMode = videoTrack.getSettings().facingMode;
-    
-    if (actualFacingMode === 'user') {
-        videoElement.style.transform = 'scaleX(-1)';
-        scene.scale.x = -1;
-    } else {
-        videoElement.style.transform = '';
-        scene.scale.x = 1;
-    }
-
-    await setupWatermark();
-
-    setCameraStatus(`${getCameraLabel(actualFacingMode)}`);
-
-    try {
-      const v = mindarThree.video;
-      if (v) { v.setAttribute('playsinline', ''); v.playsinline = true; v.muted = true; v.autoplay = true; if (isMobile) { v.style.objectFit = 'cover'; } }
-    } catch (_) {}
-  } catch (err) {
-    console.error('MindAR start failed:', err);
-    if (err.message && err.message.includes('timeout')) {
-      if (statusEl) statusEl.textContent = 'Camera starting up... Please wait';
-      console.log('Camera startup timeout, but may still be working');
-    } else {
-      const insecure = !(window.isSecureContext || location.protocol === 'https:');
-      const hint = insecure ? 'Use HTTPS (required for camera).' : 'Check camera permissions and WebGL support.';
-      if (statusEl) statusEl.textContent = `Camera issue: ${hint}`;
-      console.error('Camera startup issue:', err);
-      return;
-    }
-  }
+  
+  // Memulai proses inisialisasi
+  await setupWatermark();
+  await initializeMindAR();
 
   try {
     if (renderer && renderer.getContext && renderer.getContext().canvas) {
@@ -1121,23 +994,6 @@
     }
   } catch (_) {}
 
-  if (renderer && renderer.setAnimationLoop) {
-    renderer.setAnimationLoop(() => { 
-      try {
-        if (renderer && scene && camera) {
-          renderer.render(scene, camera); 
-          updateSelectionOverlay(); 
-          updateStickerPositions();
-        }
-      } catch (error) {
-        console.error('Render loop error:', error);
-        if (statusEl) statusEl.textContent = 'Render error occurred';
-      }
-    });
-  } else {
-    console.error('Renderer animation loop not available');
-    if (statusEl) statusEl.textContent = 'Graphics system error';
-  }
   
   async function maybeRecoverCamera(){
     try {
@@ -1145,7 +1001,7 @@
       const live = v && v.srcObject && typeof v.srcObject.getVideoTracks === 'function' && v.srcObject.getVideoTracks().some(tr => tr.readyState === 'live');
       const playing = v && !v.paused && !v.ended && v.readyState >= 2;
       if (!live || !playing) {
-        await restartAR(currentFacingMode);
+        await restartAR('user');
       }
     } catch (e) {
       console.warn('Camera recovery failed:', e);
