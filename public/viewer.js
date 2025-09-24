@@ -11,20 +11,21 @@
   console.log('URL Parameters:', { id, t, imgUrl });
   console.log('Current location:', window.location.href);
   
-  // Perubahan: Menggunakan elemen status lama untuk notifikasi umum
+  // Menggunakan elemen status lama untuk notifikasi umum
   const statusEl = document.getElementById('status');
   const container = document.getElementById('ar');
   if (!id || !t) { if (statusEl) statusEl.textContent = 'Missing token'; return; }
   if (!container) { if (statusEl) statusEl.textContent = 'AR container not found'; return; }
 
-  // Perubahan: Membuat elemen status baru khusus untuk kamera
+  // Membuat elemen status baru khusus untuk kamera
   const cameraStatusEl = document.createElement('div');
   cameraStatusEl.id = 'camera-status';
   cameraStatusEl.style.cssText = `
-    position: fixed;
+    position: absolute;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
+    width: fit-content;
     background: rgba(0, 0, 0, 0.5);
     color: white;
     padding: 5px 10px;
@@ -41,6 +42,10 @@
       if (cameraStatusEl) {
           cameraStatusEl.textContent = message;
       }
+  }
+
+  function getCameraLabel(facingMode) {
+      return facingMode === 'user' ? 'Front' : 'Rear';
   }
 
   // Mobile detection and viewport adjustment (moved to top)
@@ -64,7 +69,7 @@
   const previewImage = document.getElementById('preview-image');
   const previewVideo = document.getElementById('preview-video');
   const saveButton = document.getElementById('save-button');
-  const shareButton = document.getElementById('shareButton');
+  const shareButton = document.getElementById('share-button');
   const closeButton = document.getElementById('close-button'); // Menggunakan ID yang benar dari HTML yang direvisi
 
   // Elemen UI baru
@@ -232,7 +237,7 @@
       camera: {
         facingMode: { ideal: currentFacingMode },
         width: { ideal: isMobile ? 640 : 1280 },
-        height: { ideal: isMobile ? 480 : 720 },
+        height: { ideal: 480 : 720 },
         aspectRatio: { ideal: 4/3 }
       }
     };
@@ -304,8 +309,7 @@
   }
 
   async function restartAR(nextFacingMode){
-    // Perubahan: Gunakan elemen status baru
-    setCameraStatus(`Switching to ${nextFacingMode === 'user' ? 'Front' : 'Rear'} camera...`);
+    setCameraStatus(`Switching to ${getCameraLabel(nextFacingMode)} camera...`);
     
     const targetFacingMode = nextFacingMode || currentFacingMode;
     if (isMobile) {
@@ -338,15 +342,17 @@
       scene.add(light2);
       await mindarThree.start();
       
-      const videoElement = mindarThree.video;
-      if (videoElement) {
-          videoElement.style.transform = 'scaleX(-1)';
-          console.log('Video element mirrored via CSS after restart.');
-      }
+      const videoTrack = mindarThree.video.srcObject.getVideoTracks()[0];
+      const actualFacingMode = videoTrack.getSettings().facingMode;
+      setCameraStatus(`${getCameraLabel(actualFacingMode)}`);
       
-      if (scene) {
+      const videoElement = mindarThree.video;
+      if (actualFacingMode === 'user') {
+          videoElement.style.transform = 'scaleX(-1)';
           scene.scale.x = -1;
-          console.log('Scene mirrored to correct tracking.');
+      } else {
+          videoElement.style.transform = '';
+          scene.scale.x = 1;
       }
 
       if (mindarThree.video && isMobile) {
@@ -376,9 +382,7 @@
           }
         });
       }
-      // Perubahan: Gunakan elemen status baru
-      setCameraStatus(`Camera switched to ${currentFacingMode === 'user' ? 'Front' : 'Rear'}`);
-      console.log('Camera switch successful:', currentFacingMode);
+      console.log('Camera switch successful:', actualFacingMode);
       return true;
     } catch (error) {
       console.error('Camera switch failed:', error);
@@ -411,6 +415,9 @@
     }
     const glCanvas = mindarThree.renderer.domElement;
     const videoElement = mindarThree.video;
+    const videoTrack = videoElement.srcObject.getVideoTracks()[0];
+    const actualFacingMode = videoTrack.getSettings().facingMode;
+    const mirror = actualFacingMode === 'user';
 
     requestAnimationFrame(() => {
       const offscreenCanvas = document.createElement('canvas');
@@ -419,13 +426,15 @@
       const ctx = offscreenCanvas.getContext('2d');
 
       try {
-          // Terapkan mirroring pada konteks canvas untuk membalikkan video
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
-        ctx.restore();
+        if (mirror) {
+          ctx.save();
+          ctx.scale(-1, 1);
+          ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
+          ctx.restore();
+        } else {
+          ctx.drawImage(videoElement, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        }
 
-        // Gambar stiker AR dari canvas WebGL di atas video
         ctx.drawImage(glCanvas, 0, 0);
 
         const dataURL = offscreenCanvas.toDataURL('image/png');
@@ -494,17 +503,24 @@
     
     const glCanvas = mindarThree.renderer.domElement;
     const videoElement = mindarThree.video;
+    const videoTrack = videoElement.srcObject.getVideoTracks()[0];
+    const actualFacingMode = videoTrack.getSettings().facingMode;
+    const mirror = actualFacingMode === 'user';
     
    function drawFrame() {
       renderer.render(scene, camera);
       
       recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-      recordingCtx.save();
-      recordingCtx.scale(-1, 1);
-      recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
-      recordingCtx.restore();
-
+      if (mirror) {
+        recordingCtx.save();
+        recordingCtx.scale(-1, 1);
+        recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
+        recordingCtx.restore();
+      } else {
+        recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
+      }
+      
       recordingCtx.drawImage(glCanvas, 0, 0);
 
       videoRecordLoop = requestAnimationFrame(drawFrame);
@@ -1055,44 +1071,27 @@
     }
   }
   try {
-    // Perubahan: Gunakan elemen status baru
-    setCameraStatus(`${currentFacingMode === 'user' ? 'Front' : 'Rear'}`);
+    setCameraStatus(`Starting ${getCameraLabel(currentFacingMode)} camera...`);
     const startPromise = mindarThree.start();
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
     
     const videoElement = mindarThree.video;
-    if (videoElement) {
-        videoElement.style.transform = 'scaleX(-1)';
-        console.log('Video element mirrored via CSS.');
-    }
+    const videoTrack = videoElement.srcObject.getVideoTracks()[0];
+    const actualFacingMode = videoTrack.getSettings().facingMode;
     
-    if (scene) {
+    if (actualFacingMode === 'user') {
+        videoElement.style.transform = 'scaleX(-1)';
         scene.scale.x = -1;
-        console.log('Scene mirrored to correct tracking.');
+    } else {
+        videoElement.style.transform = '';
+        scene.scale.x = 1;
     }
 
     await setupWatermark();
 
-    // Perubahan: Menghapus notifikasi status wajah.
-    setCameraStatus(`${currentFacingMode === 'user' ? 'Front' : 'Rear'}`);
+    setCameraStatus(`${getCameraLabel(actualFacingMode)}`);
 
-    // Perubahan: Menghapus listener event wajah.
-    /*
-    if (mindarThree && typeof mindarThree.on === 'function') {
-      mindarThree.on('faceFound', () => {
-        setCameraStatus('Face detected!');
-        console.log('Face detected, ready for AR stickers');
-      });
-      mindarThree.on('faceLost', () => {
-        setCameraStatus('Face lost - Move back into view');
-        console.log('Face lost, waiting for face to return');
-      });
-    } else {
-      console.log('MindAR event handling not available, using fallback');
-      if (statusEl) statusEl.textContent = 'Face tracking active - Ready for stickers';
-    }
-    */
     try {
       const v = mindarThree.video;
       if (v) { v.setAttribute('playsinline', ''); v.playsinline = true; v.muted = true; v.autoplay = true; if (isMobile) { v.style.objectFit = 'cover'; } }
@@ -1129,16 +1128,6 @@
           renderer.render(scene, camera); 
           updateSelectionOverlay(); 
           updateStickerPositions();
-
-          // Perubahan: Menghapus pembaruan status di dalam loop
-          /*
-          if (mindarThree && mindarThree.faceTracker) {
-            const isTracking = mindarThree.faceTracker.isTracking;
-            if (isTracking && cameraStatusEl.textContent.includes('Starting') || cameraStatusEl.textContent.includes('Camera starting')) {
-              setCameraStatus('Face tracking active - Ready for stickers');
-            }
-          }
-          */
         }
       } catch (error) {
         console.error('Render loop error:', error);
