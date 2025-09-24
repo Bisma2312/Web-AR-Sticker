@@ -722,8 +722,8 @@
   }
 
   const stickers = {
-    glasses: { name: 'Glasses', anchor: 168, size: [0.8, 0.28], src: '/stickers/glasses.svg', mobileOffset: { x: 0, y: -0.05, z: 0.02 } },
-    hat: { name: 'Hat', anchor: 10, size: [1.0, 0.6], src: '/stickers/hat.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    // glasses: { name: 'Glasses', anchor: 168, size: [0.8, 0.28], src: '/stickers/glasses.svg', mobileOffset: { x: 0, y: -0.05, z: 0.02 } },
+    // hat: { name: 'Hat', anchor: 10, size: [1.0, 0.6], src: '/stickers/hat.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     afk: { name: 'AFK', anchor: 10, size: [1.0, 0.6], src: '/stickers/AFK.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     battery: { name: 'Battery', anchor: 10, size: [1.0, 0.6], src: '/stickers/Battery.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     clouds: { name: 'Clouds', anchor: 10, size: [1.0, 0.6], src: '/stickers/Clouds.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
@@ -950,9 +950,7 @@
     const key = btn.getAttribute('data-add');
     const imgEl = btn.querySelector('img');
     
-    if (key === 'glasses') { imgEl.src = '/stickers/glasses.svg'; } 
-    else if (key === 'hat') { imgEl.src = '/stickers/hat.svg'; }
-    else if (key === 'afk') { imgEl.src = '/stickers/AFK.svg'; }
+    if (key === 'afk') { imgEl.src = '/stickers/AFK.svg'; } 
     else if (key === 'battery') { imgEl.src = '/stickers/Battery.svg'; }
     else if (key === 'clouds') { imgEl.src = '/stickers/Clouds.svg'; }
     else if (key === 'detox') { imgEl.src = '/stickers/Detox.svg'; }
@@ -973,20 +971,20 @@
             console.log('Uploaded image ready for use');
           } else {
             console.warn('Uploaded image failed to load, falling back to default'); 
-            imgEl.src = '/stickers/glasses.svg'; 
+            imgEl.src = '/stickers/AFK.svg'; 
             btn.classList.remove('loading'); 
             btn.classList.add('disabled'); 
             if (statusEl) statusEl.textContent = 'Uploaded image failed to load'; 
           }
         }).catch((error) => { 
           console.error('Failed to load uploaded image:', error); 
-          imgEl.src = '/stickers/glasses.svg'; 
+          imgEl.src = '/stickers/AFK.svg'; 
           btn.classList.remove('loading'); 
           btn.classList.add('disabled'); 
           if (statusEl) statusEl.textContent = 'Uploaded image failed to load'; 
         });
       } else {
-        imgEl.src = '/stickers/glasses.svg';
+        imgEl.src = '/stickers/AFK.svg';
         btn.classList.add('disabled');
         console.warn('No uploaded image URL available');
       }
