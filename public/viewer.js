@@ -128,9 +128,6 @@ import { MindARThree } from 'mindar-face-three';
       const watermarkTexture = await new THREE.TextureLoader().loadAsync('/assets/logo-watermark.png');
       watermarkTexture.encoding = THREE.sRGBEncoding;
 
-      // Hapus baris ini: watermarkTexture.repeat.x = -1;
-      // Hapus baris ini: watermarkTexture.offset.x = 1;
-
       const watermarkMaterial = new THREE.MeshBasicMaterial({
         map: watermarkTexture,
         transparent: true,
@@ -250,6 +247,11 @@ import { MindARThree } from 'mindar-face-three';
       const ctx = offscreenCanvas.getContext('2d');
 
       try {
+        // Hapus baris ini: ctx.save();
+        // Hapus baris ini: ctx.scale(-1, 1);
+        // Hapus baris ini: ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
+        // Hapus baris ini: ctx.restore();
+        // Ganti dengan baris ini:
         ctx.drawImage(videoElement, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
         // Gambar stiker AR dari canvas WebGL di atas video
@@ -330,6 +332,11 @@ import { MindARThree } from 'mindar-face-three';
       recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
       // Gambar video dari elemen video
+      // Hapus baris ini: recordingCtx.save();
+      // Hapus baris ini: recordingCtx.scale(-1, 1);
+      // Hapus baris ini: recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
+      // Hapus baris ini: recordingCtx.restore();
+      // Ganti dengan baris ini:
       recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
 
       // Gambar stiker AR dari canvas WebGL di atas video
@@ -881,17 +888,6 @@ import { MindARThree } from 'mindar-face-three';
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
     
-    // Hapus baris ini: const videoElement = mindarThree.video;
-    // Hapus baris ini: if (videoElement) {
-    // Hapus baris ini:     videoElement.style.transform = 'scaleX(-1)';
-    // Hapus baris ini:     console.log('Video element mirrored via CSS.');
-    // Hapus baris ini: }
-    
-    // Hapus baris ini: if (scene) {
-    // Hapus baris ini:     scene.scale.x = -1;
-    // Hapus baris ini:     console.log('Scene mirrored to correct tracking.');
-    // Hapus baris ini: }
-
     await setupWatermark();
 
     if (watermarkMesh) {
@@ -952,7 +948,6 @@ import { MindARThree } from 'mindar-face-three';
           updateStickerPositions();
           if (watermarkMesh) {
               watermarkMesh.position.set(0, -0.6, -1);
-              // Hapus baris ini: watermarkMesh.rotation.set(0, Math.PI, 0);
           }
 
           if (mindarThree && mindarThree.faceTracker) {
