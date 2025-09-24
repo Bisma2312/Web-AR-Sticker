@@ -21,7 +21,7 @@
   const cameraStatusEl = document.createElement('div');
   cameraStatusEl.id = 'camera-status';
   cameraStatusEl.style.cssText = `
-    position: absolute;
+    position: fixed;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
@@ -30,9 +30,10 @@
     padding: 5px 10px;
     border-radius: 5px;
     font-size: 14px;
-    z-index: 1000;
+    z-index: 9999;
     white-space: nowrap;
     display: block;
+    pointer-events: none;
   `;
   container.appendChild(cameraStatusEl);
 
@@ -1055,7 +1056,7 @@
   }
   try {
     // Perubahan: Gunakan elemen status baru
-    setCameraStatus(`Starting ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera...`);
+    setCameraStatus(`${currentFacingMode === 'user' ? 'Front' : 'Rear'}`);
     const startPromise = mindarThree.start();
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
