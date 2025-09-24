@@ -504,7 +504,7 @@ function App() {
              <p style={{marginTop: '12px', color: '#3b5cd0'}}>Use HTTPS on mobile to allow camera.</p>
 
               {/* Still Needed For Debuging Purpose */}
-              {/* {uploadResp && (
+              {uploadResp && (
                 <div className="results-links">
                   <a className="btn primary" href={uploadResp.viewerUrl} target="_blank" rel="noreferrer">
                     Open AR Viewer
@@ -514,7 +514,7 @@ function App() {
                     <span className="url-text">{location.origin}{uploadResp.viewerUrl}</span>
                   </div>
                 </div>
-              )} */}
+              )}
             </div>
           </div>
           

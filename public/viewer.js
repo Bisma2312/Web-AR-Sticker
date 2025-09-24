@@ -724,6 +724,16 @@
   const stickers = {
     glasses: { name: 'Glasses', anchor: 168, size: [0.8, 0.28], src: '/stickers/glasses.svg', mobileOffset: { x: 0, y: -0.05, z: 0.02 } },
     hat: { name: 'Hat', anchor: 10, size: [1.0, 0.6], src: '/stickers/hat.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    afk: { name: 'AFK', anchor: 10, size: [1.0, 0.6], src: '/stickers/AFK.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    battery: { name: 'Battery', anchor: 10, size: [1.0, 0.6], src: '/stickers/Battery.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    clouds: { name: 'Clouds', anchor: 10, size: [1.0, 0.6], src: '/stickers/Clouds.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    detox: { name: 'Detox', anchor: 10, size: [1.0, 0.6], src: '/stickers/Detox.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    dnd: { name: 'DND', anchor: 10, size: [1.0, 0.6], src: '/stickers/DND.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    lightning: { name: 'Lightning', anchor: 10, size: [1.0, 0.6], src: '/stickers/Lightning.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    crown: { name: 'Crown', anchor: 10, size: [1.0, 0.6], src: '/stickers/Pixel Crown.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    heart: { name: 'Heart', anchor: 10, size: [1.0, 0.6], src: '/stickers/Pixel Heart.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    sparkles: { name: 'Sparkles', anchor: 10, size: [1.0, 0.6], src: '/stickers/Sparkles.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
+    zzz: { name: 'ZZZ', anchor: 10, size: [1.0, 0.6], src: '/stickers/ZZZ.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     // 'uploaded' akan didefinisikan secara dinamis di bawah
   };
 
@@ -742,6 +752,7 @@
         currentPos.x = Math.max(-maxOffset, Math.min(maxOffset, currentPos.x));
         currentPos.y = Math.max(-maxOffset, Math.min(maxOffset, currentPos.y));
         currentPos.z = Math.max(-0.1, Math.min(0.3, currentPos.z));
+        //currentPos.z = 0;
         applyTransforms(inst);
       }
     });
@@ -940,7 +951,17 @@
     const imgEl = btn.querySelector('img');
     
     if (key === 'glasses') { imgEl.src = '/stickers/glasses.svg'; } 
-    else if (key === 'hat') { imgEl.src = '/stickers/hat.svg'; } 
+    else if (key === 'hat') { imgEl.src = '/stickers/hat.svg'; }
+    else if (key === 'afk') { imgEl.src = '/stickers/AFK.svg'; }
+    else if (key === 'battery') { imgEl.src = '/stickers/Battery.svg'; }
+    else if (key === 'clouds') { imgEl.src = '/stickers/Clouds.svg'; }
+    else if (key === 'detox') { imgEl.src = '/stickers/Detox.svg'; }
+    else if (key === 'dnd') { imgEl.src = '/stickers/DND.svg'; }
+    else if (key === 'lightning') { imgEl.src = '/stickers/Lightning.svg'; }
+    else if (key === 'crown') { imgEl.src = '/stickers/Pixel Crown.svg'; }
+    else if (key === 'heart') { imgEl.src = '/stickers/Pixel Heart.svg'; }
+    else if (key === 'sparkles') { imgEl.src = '/stickers/Sparkles.svg'; }
+    else if (key === 'zzz') { imgEl.src = '/stickers/ZZZ.svg'; }
     else if (key === 'uploaded') {
       if (imgUrl) {
         btn.classList.add('loading');
