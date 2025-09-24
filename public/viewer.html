@@ -8,8 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script>
+    <!--<script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>-->
+    <!--<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script>-->
+    <script type="module" src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"></script>
     <style>
       body { margin: 0; background: #0f172a; color: #e5e7eb; }
       #ar { position: fixed; inset: 0; touch-action: none; }
@@ -187,6 +189,6 @@
     <div class="loader-overlay hidden">
         <div class="spinner"></div>
     </div>
-    <script src="/viewer.js"></script>
+   <script type="module" src="/viewer.js"></script>
   </body>
 </html>
