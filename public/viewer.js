@@ -887,9 +887,7 @@ import { MindARThree } from 'mindar-face-three';
     await setupWatermark();
 
     if (watermarkMesh) {
-      if (camera) {
-        camera.add(watermarkMesh);
-      }
+      scene.add(watermarkMesh);
     }
     
     if (statusEl) statusEl.textContent = 'Tracking face...';
