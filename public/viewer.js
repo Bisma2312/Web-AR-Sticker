@@ -247,12 +247,10 @@ import { MindARThree } from 'mindar-face-three';
       const ctx = offscreenCanvas.getContext('2d');
 
       try {
-        // Hapus baris ini: ctx.save();
-        // Hapus baris ini: ctx.scale(-1, 1);
-        // Hapus baris ini: ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
-        // Hapus baris ini: ctx.restore();
-        // Ganti dengan baris ini:
-        ctx.drawImage(videoElement, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
+        ctx.restore();
 
         // Gambar stiker AR dari canvas WebGL di atas video
         ctx.drawImage(glCanvas, 0, 0);
@@ -331,13 +329,10 @@ import { MindARThree } from 'mindar-face-three';
       // Bersihkan kanvas perekaman terlebih dahulu
       recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-      // Gambar video dari elemen video
-      // Hapus baris ini: recordingCtx.save();
-      // Hapus baris ini: recordingCtx.scale(-1, 1);
-      // Hapus baris ini: recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
-      // Hapus baris ini: recordingCtx.restore();
-      // Ganti dengan baris ini:
-      recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
+      recordingCtx.save();
+      recordingCtx.scale(-1, 1);
+      recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
+      recordingCtx.restore();
 
       // Gambar stiker AR dari canvas WebGL di atas video
       recordingCtx.drawImage(glCanvas, 0, 0);
@@ -784,7 +779,8 @@ import { MindARThree } from 'mindar-face-three';
     const inst = instances[active];
     if (gesture.mode === 'drag' && pointers.size === 1) {
       const dx = e.clientX - gesture.start.x; const dy = e.clientY - gesture.start.y;
-      inst.offset.x = gesture.base.x - dx * getGestureSensitivity();
+      // Perbaikan: Ubah operator dari '-' menjadi '+'
+      inst.offset.x = gesture.base.x + dx * getGestureSensitivity();
       inst.offset.y = gesture.base.y - dy * getGestureSensitivity();
       applyTransforms(inst); updateSelectionOverlay();
     } else if (gesture.mode === 'transform' && pointers.size === 2) {
