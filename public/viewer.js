@@ -119,13 +119,6 @@ import { MindARThree } from 'mindar-face-three';
     return;
   }
 
-  // Karena kita menggunakan importmap, ini tidak lagi diperlukan
-  // if (!window.MINDAR || !window.MINDAR.FACE || !window.MINDAR.FACE.MindARThree) {
-  //   if (statusEl) statusEl.textContent = 'AR library not loaded';
-  //   console.error('MindAR library not available');
-  //   return;
-  // }
-
   let mindarThree, renderer, scene, camera;
   let watermarkMesh;
 
@@ -135,8 +128,8 @@ import { MindARThree } from 'mindar-face-three';
       const watermarkTexture = await new THREE.TextureLoader().loadAsync('/assets/logo-watermark.png');
       watermarkTexture.encoding = THREE.sRGBEncoding;
 
-      watermarkTexture.repeat.x = -1;
-      watermarkTexture.offset.x = 1;
+      // Hapus baris ini: watermarkTexture.repeat.x = -1;
+      // Hapus baris ini: watermarkTexture.offset.x = 1;
 
       const watermarkMaterial = new THREE.MeshBasicMaterial({
         map: watermarkTexture,
@@ -161,9 +154,6 @@ import { MindARThree } from 'mindar-face-three';
       
       // Menggunakan renderOrder yang tinggi untuk memastikan selalu di atas
       watermarkMesh.renderOrder = 999;
-
-      // Hapus baris ini: scene.add(watermarkMesh);
-      // Pindahkan ke renderer.setAnimationLoop
       
       console.log('Watermark setup complete and positioned center.');
 
@@ -183,7 +173,6 @@ import { MindARThree } from 'mindar-face-three';
         aspectRatio: { ideal: 4/3 }
       }
     };
-    // mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig); // Baris ini tidak diperlukan
     mindarThree = new MindARThree(mindarConfig);
     ({ renderer, scene, camera } = mindarThree);
     if (!renderer || !scene || !camera) {
@@ -204,7 +193,6 @@ import { MindARThree } from 'mindar-face-three';
   
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
-  // Hapus baris ini: camera.add(watermarkMesh);
   
   function snapshotInstances(){
     const snap = [];
@@ -219,12 +207,6 @@ import { MindARThree } from 'mindar-face-three';
     return snap;
   }
 
-  // ** Hapus fungsi disposeCurrent dan rebuildInstancesFromSnapshot **
-  // Karena mindarThree.switchCamera() menanganinya secara internal
-
-  // ** Hapus fungsi restartAR **
-  // Karena mindarThree.switchCamera() menanganinya
-
   try {
     const camBtn = document.getElementById('cam-btn');
     if (camBtn) {
@@ -237,7 +219,6 @@ import { MindARThree } from 'mindar-face-three';
           camBtn.textContent = 'Switching...';
           console.log('Attempting camera switch from', currentFacingMode, 'to', (currentFacingMode === 'environment') ? 'user' : 'environment');
 
-          // Panggil mindarThree.switchCamera()
           await mindarThree.switchCamera();
           
           currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
@@ -269,11 +250,7 @@ import { MindARThree } from 'mindar-face-three';
       const ctx = offscreenCanvas.getContext('2d');
 
       try {
-          // Terapkan mirroring pada konteks canvas untuk membalikkan video
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
-        ctx.restore();
+        ctx.drawImage(videoElement, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
         // Gambar stiker AR dari canvas WebGL di atas video
         ctx.drawImage(glCanvas, 0, 0);
@@ -352,11 +329,8 @@ import { MindARThree } from 'mindar-face-three';
       // Bersihkan kanvas perekaman terlebih dahulu
       recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-      // Gambar video dari elemen video dengan mirroring yang benar
-      recordingCtx.save();
-      recordingCtx.scale(-1, 1);
-      recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
-      recordingCtx.restore();
+      // Gambar video dari elemen video
+      recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
 
       // Gambar stiker AR dari canvas WebGL di atas video
       recordingCtx.drawImage(glCanvas, 0, 0);
@@ -604,8 +578,6 @@ import { MindARThree } from 'mindar-face-three';
   }
 
   const stickers = {
-    // glasses: { name: 'Glasses', anchor: 168, size: [0.8, 0.28], src: '/stickers/glasses.svg', mobileOffset: { x: 0, y: -0.05, z: 0.02 } },
-    // hat: { name: 'Hat', anchor: 10, size: [1.0, 0.6], src: '/stickers/hat.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     afk: { name: 'AFK', anchor: 10, size: [1.0, 0.6], src: '/stickers/AFK.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     battery: { name: 'Battery', anchor: 10, size: [1.0, 0.6], src: '/stickers/Battery.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     clouds: { name: 'Clouds', anchor: 10, size: [1.0, 0.6], src: '/stickers/Clouds.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
@@ -616,7 +588,6 @@ import { MindARThree } from 'mindar-face-three';
     heart: { name: 'Heart', anchor: 10, size: [1.0, 0.6], src: '/stickers/Pixel Heart.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     sparkles: { name: 'Sparkles', anchor: 10, size: [1.0, 0.6], src: '/stickers/Sparkles.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
     zzz: { name: 'ZZZ', anchor: 10, size: [1.0, 0.6], src: '/stickers/ZZZ.svg', mobileOffset: { x: 0, y: 0.2, z: 0.02 } },
-    // 'uploaded' akan didefinisikan secara dinamis di bawah
   };
 
   function getAdjustedPosition(def, basePosition = { x: 0, y: 0, z: 0 }) {
@@ -634,7 +605,6 @@ import { MindARThree } from 'mindar-face-three';
         currentPos.x = Math.max(-maxOffset, Math.min(maxOffset, currentPos.x));
         currentPos.y = Math.max(-maxOffset, Math.min(maxOffset, currentPos.y));
         currentPos.z = Math.max(-0.1, Math.min(0.3, currentPos.z));
-        //currentPos.z = 0;
         applyTransforms(inst);
       }
     });
@@ -649,7 +619,6 @@ import { MindARThree } from 'mindar-face-three';
     const def = stickers[key]; 
     if (!def || !def.src) return null;
     
-    // Pastikan `size` tersedia sebelum membuat anchor dan mesh
     if (key === 'uploaded' && (!def.size || def.size.length !== 2)) {
         console.error('Uploaded sticker size is not defined correctly.');
         return null;
@@ -662,10 +631,6 @@ import { MindARThree } from 'mindar-face-three';
     } else {
       texture = await getRasterTextureCached(def.src);
     }
-    
-    // Membalikkan tekstur agar stiker terlihat benar
-    texture.repeat.x = -1;
-    texture.offset.x = 1;
     
     const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
@@ -873,7 +838,6 @@ import { MindARThree } from 'mindar-face-three';
     }
     
     btn.addEventListener('click', async () => {
-      // Periksa apakah stiker yang diunggah diklik
       if (key === 'uploaded' && imgUrl) {
         const img = preloadedImageCache.get(imgUrl);
         if (img) {
@@ -881,7 +845,6 @@ import { MindARThree } from 'mindar-face-three';
           const baseWidth = 1.1;
           const newHeight = baseWidth / aspectRatio;
 
-          // Perbarui definisi stiker 'uploaded' secara dinamis
           stickers.uploaded = {
             name: 'Uploaded',
             anchor: 168,
@@ -912,23 +875,22 @@ import { MindARThree } from 'mindar-face-three';
   });
 
   if (statusEl) statusEl.textContent = 'Starting camera...';
-  // ** Hapus fungsi setupMobileCamera() **
   
   try {
     const startPromise = mindarThree.start();
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
     
-    const videoElement = mindarThree.video;
-    if (videoElement) {
-        videoElement.style.transform = 'scaleX(-1)';
-        console.log('Video element mirrored via CSS.');
-    }
+    // Hapus baris ini: const videoElement = mindarThree.video;
+    // Hapus baris ini: if (videoElement) {
+    // Hapus baris ini:     videoElement.style.transform = 'scaleX(-1)';
+    // Hapus baris ini:     console.log('Video element mirrored via CSS.');
+    // Hapus baris ini: }
     
-    if (scene) {
-        scene.scale.x = -1;
-        console.log('Scene mirrored to correct tracking.');
-    }
+    // Hapus baris ini: if (scene) {
+    // Hapus baris ini:     scene.scale.x = -1;
+    // Hapus baris ini:     console.log('Scene mirrored to correct tracking.');
+    // Hapus baris ini: }
 
     await setupWatermark();
 
@@ -990,7 +952,7 @@ import { MindARThree } from 'mindar-face-three';
           updateStickerPositions();
           if (watermarkMesh) {
               watermarkMesh.position.set(0, -0.6, -1);
-              watermarkMesh.rotation.set(0, Math.PI, 0); // Pastikan watermark tidak terbalik
+              // Hapus baris ini: watermarkMesh.rotation.set(0, Math.PI, 0);
           }
 
           if (mindarThree && mindarThree.faceTracker) {
@@ -1016,9 +978,7 @@ import { MindARThree } from 'mindar-face-three';
       const live = v && v.srcObject && typeof v.srcObject.getVideoTracks === 'function' && v.srcObject.getVideoTracks().some(tr => tr.readyState === 'live');
       const playing = v && !v.paused && !v.ended && v.readyState >= 2;
       if (!live || !playing) {
-        // Panggil mindarThree.switchCamera() tanpa argumen
         await mindarThree.switchCamera();
-        // Anda mungkin perlu memperbarui state `currentFacingMode` di sini
       }
     } catch (e) {
       console.warn('Camera recovery failed:', e);
