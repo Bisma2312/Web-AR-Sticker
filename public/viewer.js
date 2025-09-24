@@ -11,17 +11,42 @@
   console.log('URL Parameters:', { id, t, imgUrl });
   console.log('Current location:', window.location.href);
   
+  // Perubahan: Menggunakan elemen status lama untuk notifikasi umum
   const statusEl = document.getElementById('status');
   const container = document.getElementById('ar');
   if (!id || !t) { if (statusEl) statusEl.textContent = 'Missing token'; return; }
   if (!container) { if (statusEl) statusEl.textContent = 'AR container not found'; return; }
 
+  // Perubahan: Membuat elemen status baru khusus untuk kamera
+  const cameraStatusEl = document.createElement('div');
+  cameraStatusEl.id = 'camera-status';
+  cameraStatusEl.style.cssText = `
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    z-index: 1000;
+    white-space: nowrap;
+    display: block;
+  `;
+  container.appendChild(cameraStatusEl);
+
+  function setCameraStatus(message) {
+      if (cameraStatusEl) {
+          cameraStatusEl.textContent = message;
+      }
+  }
+
   // Mobile detection and viewport adjustment (moved to top)
   const isMobile = /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    window.innerWidth <= 768;
   const rotationSign = -1;
-  // Perubahan: Memaksa kamera ke mode 'user'
-  let currentFacingMode = 'user';
+  let currentFacingMode = useRear ? 'environment' : 'user';
   
   // Variabel untuk menyimpan ukuran stiker yang diunggah
   let uploadedStickerSize = [1.1, 1.1]; 
@@ -38,7 +63,7 @@
   const previewImage = document.getElementById('preview-image');
   const previewVideo = document.getElementById('preview-video');
   const saveButton = document.getElementById('save-button');
-  const shareButton = document.getElementById('share-button');
+  const shareButton = document.getElementById('shareButton');
   const closeButton = document.getElementById('close-button'); // Menggunakan ID yang benar dari HTML yang direvisi
 
   // Elemen UI baru
@@ -53,21 +78,23 @@
   // ** Fungsi untuk memulai hitung mundur **
   function startCountdown() {
       countdownTime = 30;
-      countdownTimerEl.textContent = '00:30';
-      countdownTimerEl.style.display = 'block';
+      if (countdownTimerEl) {
+          countdownTimerEl.textContent = '00:30';
+          countdownTimerEl.style.display = 'block';
+      }
 
       countdownInterval = setInterval(() => {
           countdownTime--;
           const minutes = Math.floor(countdownTime / 60);
           const seconds = countdownTime % 60;
           const formattedTime = `0${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-          countdownTimerEl.textContent = formattedTime;
+          if (countdownTimerEl) countdownTimerEl.textContent = formattedTime;
 
           if (countdownTime <= 0) {
               clearInterval(countdownInterval);
               // Panggil fungsi untuk menghentikan perekaman
               stopVideoRecording();
-              countdownTimerEl.style.display = 'none';
+              if (countdownTimerEl) countdownTimerEl.style.display = 'none';
           }
       }, 1000);
   }
@@ -75,7 +102,7 @@
   // ** Fungsi untuk menghentikan hitung mundur **
   function stopCountdown() {
       clearInterval(countdownInterval);
-      countdownTimerEl.style.display = 'none';
+      if (countdownTimerEl) countdownTimerEl.style.display = 'none';
   }
 
 
@@ -87,8 +114,7 @@
       }
       const constraints = { 
         video: { 
-          // Perubahan: Memaksa ke 'user' di sini juga
-          facingMode: { ideal: 'user' },
+          facingMode: { ideal: facingMode },
           width: { ideal: 640, max: 1280 },
           height: { ideal: 480, max: 720 }
         } 
@@ -203,8 +229,7 @@
     const mindarConfig = {
       container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
       camera: {
-        // Perubahan: Memaksa ke 'user' saat inisialisasi awal
-        facingMode: { ideal: 'user' },
+        facingMode: { ideal: currentFacingMode },
         width: { ideal: isMobile ? 640 : 1280 },
         height: { ideal: isMobile ? 480 : 720 },
         aspectRatio: { ideal: 4/3 }
@@ -278,9 +303,10 @@
   }
 
   async function restartAR(nextFacingMode){
-    try { if (statusEl) statusEl.textContent = 'Switching camera...'; } catch(_){}
-    // Perubahan: Abaikan `nextFacingMode` dan selalu atur ke 'user'
-    const targetFacingMode = 'user';
+    // Perubahan: Gunakan elemen status baru
+    setCameraStatus(`Switching to ${nextFacingMode === 'user' ? 'Front' : 'Rear'} camera...`);
+    
+    const targetFacingMode = nextFacingMode || currentFacingMode;
     if (isMobile) {
       const cameraReady = await setupMobileCamera(targetFacingMode);
       if (!cameraReady) {
@@ -349,7 +375,8 @@
           }
         });
       }
-      if (statusEl) statusEl.textContent = `Camera switched to ${currentFacingMode} - Tracking face...`;
+      // Perubahan: Gunakan elemen status baru
+      setCameraStatus(`Camera switched to ${currentFacingMode === 'user' ? 'Front' : 'Rear'}`);
       console.log('Camera switch successful:', currentFacingMode);
       return true;
     } catch (error) {
@@ -468,19 +495,15 @@
     const videoElement = mindarThree.video;
     
    function drawFrame() {
-      // Pastikan renderer me-render frame terbaru
       renderer.render(scene, camera);
       
-      // Bersihkan kanvas perekaman terlebih dahulu
       recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-      // Gambar video dari elemen video dengan mirroring yang benar
       recordingCtx.save();
       recordingCtx.scale(-1, 1);
       recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
       recordingCtx.restore();
 
-      // Gambar stiker AR dari canvas WebGL di atas video
       recordingCtx.drawImage(glCanvas, 0, 0);
 
       videoRecordLoop = requestAnimationFrame(drawFrame);
@@ -491,7 +514,6 @@
     isRecording = true;
     if (statusEl) statusEl.textContent = 'Recording...';
     console.log('Video recording started');
-    // ** Tambahkan panggilan ke fungsi startCountdown di sini **
     startCountdown();
   }
 
@@ -507,7 +529,6 @@
     stopCountdown();
   }
   
-  // Fungsi baru untuk menampilkan pratinjau
   function showPreview(dataUrl, type) {
     if (type === 'photo') {
         previewImage.src = dataUrl;
@@ -529,7 +550,6 @@
     if (statusEl) statusEl.textContent = 'Pratinjau siap!';
   }
   
-  // Fungsi untuk menyimpan file
   function saveFile(url, filename) {
       const link = document.createElement('a');
       link.href = url;
@@ -540,7 +560,6 @@
       if (statusEl) statusEl.textContent = 'File berhasil diunduh!';
   }
 
-  // Fungsi untuk berbagi file menggunakan Web Share API
   async function shareFile(url, filename, mimeType) {
       if (navigator.share) {
           try {
@@ -563,7 +582,6 @@
       }
   }
   
-  // Fungsi baru untuk berbagi video
   async function shareVideoFile(url) {
       if (!navigator.share) {
           alert('Fitur berbagi tidak didukung di browser ini.');
@@ -595,7 +613,6 @@
       }
   }
 
-  // Event listener untuk tombol keluar baru
   closeButton.addEventListener('click', () => {
       previewContainer.classList.add('hidden');
       if (previewVideo) {
@@ -607,7 +624,6 @@
   });
 
 
-  // Fungsionalitas baru untuk tombol toggle Photo/Video
   function setMode(mode) {
     currentMode = mode;
     if (mode === 'photo') {
@@ -621,10 +637,8 @@
     }
   }
 
-  // Pengaturan mode awal
   setMode('photo');
 
-  // Menangani klik pada tombol toggle "Photo"
   photoToggleBtn.addEventListener('click', () => {
     if (currentMode !== 'photo') {
       setMode('photo');
@@ -632,7 +646,6 @@
     }
   });
 
-  // Menangani klik pada tombol toggle "Video"
   videoToggleBtn.addEventListener('click', () => {
     if (currentMode !== 'video') {
       setMode('video');
@@ -640,7 +653,6 @@
     }
   });
   
-  // Menangani klik pada tombol "Capture"
   captureBtn.addEventListener('click', () => {
     if (currentMode === 'photo') {
       takePhoto();
@@ -1042,6 +1054,8 @@
     }
   }
   try {
+    // Perubahan: Gunakan elemen status baru
+    setCameraStatus(`Starting ${currentFacingMode === 'user' ? 'Front' : 'Rear'} camera...`);
     const startPromise = mindarThree.start();
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
     await Promise.race([startPromise, timeoutPromise]);
@@ -1059,20 +1073,25 @@
 
     await setupWatermark();
 
-    if (statusEl) statusEl.textContent = 'Tracking face...';
+    // Perubahan: Menghapus notifikasi status wajah.
+    setCameraStatus(`${currentFacingMode === 'user' ? 'Front' : 'Rear'}`);
+
+    // Perubahan: Menghapus listener event wajah.
+    /*
     if (mindarThree && typeof mindarThree.on === 'function') {
       mindarThree.on('faceFound', () => {
-        if (statusEl) statusEl.textContent = 'Face detected - Ready for stickers';
+        setCameraStatus('Face detected!');
         console.log('Face detected, ready for AR stickers');
       });
       mindarThree.on('faceLost', () => {
-        if (statusEl) statusEl.textContent = 'Face lost - Move back into view';
+        setCameraStatus('Face lost - Move back into view');
         console.log('Face lost, waiting for face to return');
       });
     } else {
       console.log('MindAR event handling not available, using fallback');
       if (statusEl) statusEl.textContent = 'Face tracking active - Ready for stickers';
     }
+    */
     try {
       const v = mindarThree.video;
       if (v) { v.setAttribute('playsinline', ''); v.playsinline = true; v.muted = true; v.autoplay = true; if (isMobile) { v.style.objectFit = 'cover'; } }
@@ -1110,12 +1129,15 @@
           updateSelectionOverlay(); 
           updateStickerPositions();
 
+          // Perubahan: Menghapus pembaruan status di dalam loop
+          /*
           if (mindarThree && mindarThree.faceTracker) {
             const isTracking = mindarThree.faceTracker.isTracking;
-            if (isTracking && statusEl && statusEl.textContent.includes('Starting') || statusEl.textContent.includes('Camera starting')) {
-              statusEl.textContent = 'Face tracking active - Ready for stickers';
+            if (isTracking && cameraStatusEl.textContent.includes('Starting') || cameraStatusEl.textContent.includes('Camera starting')) {
+              setCameraStatus('Face tracking active - Ready for stickers');
             }
           }
+          */
         }
       } catch (error) {
         console.error('Render loop error:', error);
