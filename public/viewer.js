@@ -45,7 +45,7 @@
   const videoToggleBtn = document.getElementById('video-toggle-btn');
   const captureBtn = document.getElementById('capture-btn');
 
-   const countdownTimerEl = document.getElementById('countdown-timer'); // ** Tambahkan ini **
+  const countdownTimerEl = document.getElementById('countdown-timer'); // ** Tambahkan ini **
   let countdownInterval; // ** Tambahkan ini **
   let countdownTime = 30; // ** Tambahkan ini **
 
@@ -273,51 +273,81 @@
     }
     try { updateSelectionOverlay(); } catch(_){}
   }
-
+  
   async function restartAR(nextFacingMode){
     try { if (statusEl) statusEl.textContent = 'Switching camera...'; } catch(_){}
     const targetFacingMode = nextFacingMode || currentFacingMode;
-    if (isMobile) {
-      const cameraReady = await setupMobileCamera(targetFacingMode);
-      if (!cameraReady) {
-        if (statusEl) statusEl.textContent = `Cannot switch to ${targetFacingMode} camera`;
-        return false;
-      }
-    }
+
     const snap = snapshotInstances();
     await disposeCurrent();
     await new Promise(resolve => setTimeout(resolve, 500));
-    currentFacingMode = targetFacingMode;
+    
+    let successful = false;
+    let finalFacingMode = targetFacingMode;
+
+    // Attempt 1: Try the ideal facing mode
     try {
-      const mindarConfig2 = {
+      const mindarConfig = {
         container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
         camera: {
-          facingMode: { ideal: currentFacingMode },
+          facingMode: { ideal: targetFacingMode },
           width: { ideal: isMobile ? 640 : 1280 },
           height: { ideal: isMobile ? 480 : 720 },
           aspectRatio: { ideal: 4/3 }
         }
       };
-      mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig2);
+      mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig);
       ({ renderer, scene, camera } = mindarThree);
-      if (!renderer || !scene || !camera) {
-        throw new Error('MindAR failed to initialize after camera switch');
-      }
+      await mindarThree.start();
+      successful = true;
+      finalFacingMode = targetFacingMode;
+      console.log(`Successfully started with ideal facing mode: ${finalFacingMode}`);
+    } catch (error) {
+      console.warn(`Failed with ideal facing mode (${targetFacingMode}):`, error);
+      if (statusEl) statusEl.textContent = `Retrying with exact mode...`;
+    }
+    
+    // Attempt 2: If the first attempt failed, try with exact facing mode
+    if (!successful) {
+        try {
+            const mindarConfig = {
+                container, maxFaces: 1, faceIndex: 0, uiScanning: false, uiLoading: false, uiError: false,
+                camera: {
+                    facingMode: { exact: targetFacingMode },
+                    width: { ideal: isMobile ? 640 : 1280 },
+                    height: { ideal: isMobile ? 480 : 720 },
+                    aspectRatio: { ideal: 4/3 }
+                }
+            };
+            mindarThree = new window.MINDAR.FACE.MindARThree(mindarConfig);
+            ({ renderer, scene, camera } = mindarThree);
+            await mindarThree.start();
+            successful = true;
+            finalFacingMode = targetFacingMode;
+            console.log(`Successfully started with exact facing mode: ${finalFacingMode}`);
+        } catch (error) {
+            console.error(`Failed with exact facing mode (${targetFacingMode}):`, error);
+            if (statusEl) statusEl.textContent = 'Failed to switch camera.';
+        }
+    }
+
+    // Final check and setup
+    if (successful) {
+      currentFacingMode = finalFacingMode;
       const light2 = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
       scene.add(light2);
-      await mindarThree.start();
       
       const videoElement = mindarThree.video;
       if (videoElement) {
-          videoElement.style.transform = 'scaleX(-1)';
-          console.log('Video element mirrored via CSS after restart.');
+          videoElement.style.transform = (currentFacingMode === 'user') ? 'scaleX(-1)' : 'scaleX(1)';
+          console.log('Video element transform updated for correct facing mode.');
       }
       
       if (scene) {
-          scene.scale.x = -1;
-          console.log('Scene mirrored to correct tracking.');
+          scene.scale.x = (currentFacingMode === 'user') ? -1 : 1;
+          console.log('Scene scale updated to correct tracking.');
       }
-
+      
       if (mindarThree.video && isMobile) {
         const video = mindarThree.video;
         video.setAttribute('playsinline', ''); video.playsInline = true; video.muted = true; video.autoplay = true;
@@ -348,10 +378,10 @@
       if (statusEl) statusEl.textContent = `Camera switched to ${currentFacingMode} - Tracking face...`;
       console.log('Camera switch successful:', currentFacingMode);
       return true;
-    } catch (error) {
-      console.error('Camera switch failed:', error);
-      if (statusEl) statusEl.textContent = `Camera switch failed: ${error.message}`;
-      return false;
+    } else {
+        if (statusEl) statusEl.textContent = `Failed to switch to ${targetFacingMode} camera.`;
+        console.error('Camera switch failed after all attempts.');
+        return false;
     }
   }
 
@@ -387,11 +417,15 @@
       const ctx = offscreenCanvas.getContext('2d');
 
       try {
-          // Terapkan mirroring pada konteks canvas untuk membalikkan video
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
-        ctx.restore();
+          // Terapkan mirroring pada konteks canvas untuk membalikkan video jika kamera depan
+        if (currentFacingMode === 'user') {
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.drawImage(videoElement, -offscreenCanvas.width, 0, offscreenCanvas.width, offscreenCanvas.height);
+            ctx.restore();
+        } else {
+            ctx.drawImage(videoElement, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        }
 
         // Gambar stiker AR dari canvas WebGL di atas video
         ctx.drawImage(glCanvas, 0, 0);
@@ -471,10 +505,14 @@
       recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
       // Gambar video dari elemen video dengan mirroring yang benar
-      recordingCtx.save();
-      recordingCtx.scale(-1, 1);
-      recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
-      recordingCtx.restore();
+      if (currentFacingMode === 'user') {
+          recordingCtx.save();
+          recordingCtx.scale(-1, 1);
+          recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
+          recordingCtx.restore();
+      } else {
+          recordingCtx.drawImage(videoElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
+      }
 
       // Gambar stiker AR dari canvas WebGL di atas video
       recordingCtx.drawImage(glCanvas, 0, 0);
@@ -1038,6 +1076,7 @@
       return;
     }
   }
+  
   try {
     const startPromise = mindarThree.start();
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Camera start timeout')), 15000));
@@ -1045,13 +1084,17 @@
     
     const videoElement = mindarThree.video;
     if (videoElement) {
-        videoElement.style.transform = 'scaleX(-1)';
-        console.log('Video element mirrored via CSS.');
+        if (currentFacingMode === 'user') {
+            videoElement.style.transform = 'scaleX(-1)';
+        } else {
+            videoElement.style.transform = 'scaleX(1)';
+        }
+        console.log('Video element transform updated based on initial facing mode.');
     }
     
     if (scene) {
-        scene.scale.x = -1;
-        console.log('Scene mirrored to correct tracking.');
+        scene.scale.x = (currentFacingMode === 'user') ? -1 : 1;
+        console.log('Scene scale updated to correct tracking.');
     }
 
     await setupWatermark();
