@@ -277,7 +277,7 @@ import { MindARThree } from 'mindar-face-three';
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    const mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+    const mimeType = 'video/mp4; codecs="avc1.4d002a"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
         console.warn('Perekaman MP4 tidak didukung.');
         if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung di browser ini.';
