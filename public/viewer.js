@@ -34,7 +34,14 @@ import { MindARThree } from 'mindar-face-three';
   let recordingCanvas; // Kanvas untuk menggabungkan video dan AR
   let recordingCtx;
   let videoRecordLoop; // Loop untuk menggambar video selama perekaman
+  let ffmpeg = null;
+  let ffmpegLoaded = false;
   
+  // ** NEW: Variabel untuk menyimpan data pratinjau saat ini **
+  let currentPreviewUrl = null;
+  let currentPreviewType = null;
+
+
   // Elemen pratinjau
   const previewContainer = document.getElementById('preview-container');
   const previewImage = document.getElementById('preview-image');
@@ -277,11 +284,11 @@ import { MindARThree } from 'mindar-face-three';
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    const mimeType = 'video/mp4; codecs="avc1.4d002a"';
+    let mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
-        console.warn('Perekaman MP4 tidak didukung.');
-        if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung di browser ini.';
-        return;
+        console.warn('Perekaman MP4 tidak didukung. Beralih ke WebM.');
+        mimeType = 'video/webm; codecs=vp9';
+        if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung. Rekaman akan disimpan sebagai WebM.';
     }
 
     try {
@@ -349,45 +356,133 @@ import { MindARThree } from 'mindar-face-three';
     startCountdown();
   }
 
-  function stopVideoRecording() {
-    if (!isRecording || !mediaRecorder) return;
-    mediaRecorder.stop();
-    isRecording = false;
-    if (videoRecordLoop) {
-      cancelAnimationFrame(videoRecordLoop);
-      videoRecordLoop = null;
-    }
-    console.log('Video recording stopped');
-    stopCountdown();
-  }
-  
-  // Fungsi baru untuk menampilkan pratinjau
-  function showPreview(dataUrl, type) {
-    if (type === 'photo') {
-        previewImage.src = dataUrl;
-        previewImage.style.display = 'block';
-        previewVideo.style.display = 'none';
-        saveButton.onclick = () => saveFile(dataUrl, 'ar-photo.png');
-        shareButton.onclick = () => shareFile(dataUrl, 'ar-photo.png', 'image/png');
-    } else {
-        previewVideo.src = dataUrl;
-        previewVideo.style.display = 'block';
-        previewImage.style.display = 'none';
-        saveButton.onclick = () => saveFile(dataUrl, `ar-video.mp4`);
-        shareButton.onclick = () => shareVideoFile(dataUrl);
-        previewVideo.play();
+async function loadFFmpeg() {
+    if (ffmpegLoaded) return;
+    
+    // Pastikan FFmpeg tersedia di window sebelum mencoba menggunakannya
+    if (!window.FFmpeg) {
+        console.error('Perpustakaan FFmpeg tidak tersedia.');
+        showLoader('Gagal memuat konverter. Coba muat ulang halaman.');
+        return;
     }
     
-     // Pastikan pratinjau ada sebelum melanjutkan
-    if (previewContainer) {
-        // Tampilkan pratinjau
-        previewContainer.classList.remove('hidden');
+    showLoader('Memuat konverter...');
+    const { createFFmpeg, fetchFile } = window.FFmpeg;
+    ffmpeg = createFFmpeg({
+      log: true,
+      corePath: 'https://unpkg.com/@ffmpeg/core@0.12.7/dist/ffmpeg-core.js',
+    });
+    await ffmpeg.load();
+    ffmpegLoaded = true;
+    hideLoader();
+    console.log('FFmpeg.js berhasil dimuat.');
+}
 
-        // Aktifkan interaksi mouse HANYA pada kontainer pratinjau
-        previewContainer.style.pointerEvents = 'auto';
+
+function showLoader(message = 'Mengonversi video...') {
+    // Ambil elemen dari DOM di dalam fungsi
+    const loaderOverlay = document.querySelector('.loader-overlay');
+    if (loaderOverlay) {
+        const loadingText = loaderOverlay.querySelector('.loading-text');
+        if (loadingText) {
+            loadingText.textContent = message;
+        }
+        loaderOverlay.classList.remove('hidden');
     }
-    shareButton.style.display = navigator.share ? 'block' : 'none';
-    if (statusEl) statusEl.textContent = 'Pratinjau siap!';
+}
+
+function hideLoader() {
+    // Ambil elemen dari DOM di dalam fungsi
+    const loaderOverlay = document.querySelector('.loader-overlay');
+    if (loaderOverlay) {
+        loaderOverlay.classList.add('hidden');
+    }
+}
+function showPreview(url, type) {
+  // ** NEW: Simpan URL dan tipe pratinjau saat ini **
+  currentPreviewUrl = url;
+  currentPreviewType = type;
+  if (type === 'photo') {
+    previewImage.src = url;
+    previewImage.style.display = 'block';
+    previewVideo.style.display = 'none';
+  } else {
+    previewVideo.src = url;
+    previewVideo.style.display = 'block';
+    previewImage.style.display = 'none';
+  }
+  previewContainer.classList.remove('hidden');
+  previewContainer.style.pointerEvents = 'auto';
+  if (statusEl) statusEl.textContent = 'Previewing ' + type;
+}
+
+async function stopVideoRecording() {
+    if (!isRecording || !mediaRecorder) return;
+
+    // Matikan loop gambar saat perekaman berhenti
+    if (videoRecordLoop) {
+        cancelAnimationFrame(videoRecordLoop);
+        videoRecordLoop = null;
+    }
+
+    mediaRecorder.stop();
+    isRecording = false;
+    stopCountdown();
+
+    // Tampilkan loader saat konversi akan dimulai
+    showLoader();
+
+    console.log('Video recording stopped. Starting conversion...');
+
+    try {
+        const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+        const inputFilename = 'input.webm'; // Nama file input di memori FFmpeg
+
+        // Tulis blob video ke memori virtual FFmpeg
+        await ffmpeg.FS('writeFile', inputFilename, await fetchFile(superBuffer));
+
+        // Jalankan perintah konversi
+        const outputFilename = 'output.mp4';
+        await ffmpeg.run('-i', inputFilename, '-c:v', 'libx264', '-crf', '23', '-preset', 'fast', '-c:a', 'aac', '-b:a', '128k', outputFilename);
+
+        // Baca kembali file yang sudah dikonversi
+        const data = ffmpeg.FS('readFile', outputFilename);
+        const convertedBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        const videoURL = URL.createObjectURL(convertedBlob);
+
+        // Tampilkan pratinjau dengan video MP4 yang sudah dikonversi
+        showPreview(videoURL, 'video');
+
+    } catch (error) {
+        console.error('Video conversion failed:', error);
+        if (statusEl) statusEl.textContent = 'Konversi video gagal. Memuat pratinjau asli.';
+
+        // Fallback ke video asli jika konversi gagal
+        const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+        const videoURL = window.URL.createObjectURL(superBuffer);
+        showPreview(videoURL, 'video');
+
+    } finally {
+        // Sembunyikan loader
+        hideLoader();
+        // Bersihkan data dari memori FFmpeg
+        try { ffmpeg.FS('unlink', 'input.webm'); } catch (_) {}
+        try { ffmpeg.FS('unlink', 'output.mp4'); } catch (_) {}
+    }
+
+    // Kembalikan loop animasi MindAR setelah selesai
+    if (renderer && renderer.setAnimationLoop) {
+        renderer.setAnimationLoop(() => {
+            renderer.render(scene, camera);
+            updateSelectionOverlay();
+            updateStickerPositions();
+        });
+    }
+
+    // Reset variabel perekaman
+    recordingCanvas = null;
+    recordingCtx = null;
+    recordedBlobs = [];
   }
   
   // Fungsi untuk menyembunyikan pratinjau
@@ -450,9 +545,13 @@ function hidePreview() {
           const response = await fetch(url);
           const blob = await response.blob();
           
-          const targetMime = 'video/mp4';
-          
-          const file = new File([blob], `ar-video.mp4`, { type: targetMime });
+          let targetMime = blob.type;
+          if (blob.type.includes('webm')) {
+              targetMime = 'video/webm';
+              console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
+          }
+
+          const file = new File([blob], `ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
 
           await navigator.share({
               files: [file],
@@ -513,13 +612,14 @@ function hidePreview() {
   });
   
   // Menangani klik pada tombol "Capture"
-  captureBtn.addEventListener('click', () => {
+  captureBtn.addEventListener('click', async () => {
     if (currentMode === 'photo') {
       takePhoto();
     } else if (currentMode === 'video') {
       if (isRecording) {
         stopVideoRecording();
       } else {
+        await loadFFmpeg(); // Pastikan FFmpeg dimuat sebelum memulai perekaman
         startVideoRecording();
       }
     }
@@ -978,6 +1078,24 @@ function hidePreview() {
     console.error('Renderer animation loop not available');
     if (statusEl) statusEl.textContent = 'Graphics system error';
   }
+  
+  // ** NEW: Tambahkan event listeners untuk tombol Save dan Share **
+  saveButton.addEventListener('click', () => {
+    if (currentPreviewUrl) {
+      const filename = currentPreviewType === 'photo' ? 'photo.png' : 'video.mp4';
+      saveFile(currentPreviewUrl, filename);
+    }
+  });
+
+  shareButton.addEventListener('click', () => {
+    if (currentPreviewUrl) {
+      if (currentPreviewType === 'photo') {
+        shareFile(currentPreviewUrl, 'photo.png', 'image/png');
+      } else {
+        shareVideoFile(currentPreviewUrl);
+      }
+    }
+  });
   
   async function maybeRecoverCamera(){
     try {
