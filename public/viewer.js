@@ -378,11 +378,32 @@ import { MindARThree } from 'mindar-face-three';
         previewVideo.play();
     }
     
-    previewContainer.classList.remove('hidden');
+     // Pastikan pratinjau ada sebelum melanjutkan
+    if (previewContainer) {
+        // Tampilkan pratinjau
+        previewContainer.classList.remove('hidden');
+
+        // Aktifkan interaksi mouse HANYA pada kontainer pratinjau
+        previewContainer.style.pointerEvents = 'auto';
+    }
     shareButton.style.display = navigator.share ? 'block' : 'none';
     if (statusEl) statusEl.textContent = 'Pratinjau siap!';
   }
   
+  // Fungsi untuk menyembunyikan pratinjau
+function hidePreview() {
+    const previewContainer = document.getElementById('preview-container');
+
+    if (previewContainer) {
+        // Sembunyikan pratinjau
+        previewContainer.classList.add('hidden');
+
+        // Nonaktifkan interaksi mouse PADA kontainer pratinjau
+        // Ini akan membiarkan klik menembus ke stiker di belakangnya
+        previewContainer.style.pointerEvents = 'none';
+    }
+}
+
   // Fungsi untuk menyimpan file
   function saveFile(url, filename) {
       const link = document.createElement('a');
@@ -457,6 +478,7 @@ import { MindARThree } from 'mindar-face-three';
           previewVideo.removeAttribute('src'); // Menghapus sumber untuk memuat ulang
           previewVideo.load();
           stopCountdown();
+          hidePreview();
       }
   });
 
