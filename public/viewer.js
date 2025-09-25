@@ -277,11 +277,11 @@ import { MindARThree } from 'mindar-face-three';
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    let mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+    const mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
-        console.warn('Perekaman MP4 tidak didukung. Beralih ke WebM.');
-        mimeType = 'video/webm; codecs=vp9';
-        if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung. Rekaman akan disimpan sebagai WebM.';
+        console.warn('Perekaman MP4 tidak didukung.');
+        if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung di browser ini.';
+        return;
     }
 
     try {
@@ -373,7 +373,7 @@ import { MindARThree } from 'mindar-face-three';
         previewVideo.src = dataUrl;
         previewVideo.style.display = 'block';
         previewImage.style.display = 'none';
-        saveButton.onclick = () => saveFile(dataUrl, `ar-video.${dataUrl.includes('mp4') ? 'mp4' : 'webm'}`);
+        saveButton.onclick = () => saveFile(dataUrl, `ar-video.mp4`);
         shareButton.onclick = () => shareVideoFile(dataUrl);
         previewVideo.play();
     }
@@ -450,13 +450,9 @@ function hidePreview() {
           const response = await fetch(url);
           const blob = await response.blob();
           
-          let targetMime = blob.type;
-          if (blob.type.includes('webm')) {
-              targetMime = 'video/webm';
-              console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
-          }
-
-          const file = new File([blob], `ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
+          const targetMime = 'video/mp4';
+          
+          const file = new File([blob], `ar-video.mp4`, { type: targetMime });
 
           await navigator.share({
               files: [file],
