@@ -41,6 +41,8 @@ import { MindARThree } from 'mindar-face-three';
   let currentPreviewUrl = null;
   let currentPreviewType = null;
 
+  // Deteksi perangkat iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   // Elemen pratinjau
   const previewContainer = document.getElementById('preview-container');
@@ -410,6 +412,13 @@ function showPreview(url, type) {
     previewVideo.src = url;
     previewVideo.style.display = 'block';
     previewImage.style.display = 'none';
+  }
+    // Logika baru untuk menyembunyikan tombol Save di iOS
+  if (isIOS) {
+    saveButton.style.display = 'none';
+    console.log('Detected iOS. Hiding Save button for all media types.');
+  } else {
+    saveButton.style.display = ''; // Tampilkan tombol Save
   }
   previewContainer.classList.remove('hidden');
   previewContainer.style.pointerEvents = 'auto';
