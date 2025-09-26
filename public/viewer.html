@@ -47,15 +47,24 @@
       }
       .tray .thumb {
         pointer-events: auto;
-        width: 60px;
-        height: 60px;
+        /* CHANGE: Change fixed px width to a responsive max-width/fixed width */
+        width: 60px; /* Keep a fixed width for desktop/larger mobiles */
+        /* REMOVE: Remove fixed height: 60px; to use aspect-ratio */
+        /* height: 60px; */ 
+        
         border-radius: 50%;
         background: #111827;
         border: 2px solid #374151;
         cursor: pointer;
         transition: all 0.2s ease;
         overflow: hidden;
-        padding: 8px;
+        
+        /* CHANGE 1: Use CSS aspect-ratio to ensure it's always a circle (height = width) */
+        aspect-ratio: 1 / 1; 
+
+        /* CHANGE 2: Change padding to use percentage for responsiveness */
+        padding: 10%; /* Increased padding slightly for better fit, adjust as needed */
+
         display: grid;
         place-items: center;
       }
