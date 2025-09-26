@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-    <title>AR Viewer</title>
+    <title>The Recharge Room by Lenovo.</title>
     <link rel="stylesheet" href="/styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
     <!-- <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-face-three.prod.js"></script> -->
     <script type="importmap">
@@ -28,7 +30,7 @@
       .chip:hover { background: #374151; transform: translateY(-1px); }
       .chip.button { cursor: pointer; user-select: none; }
       .chip.button.active { background: #60a5fa; color: #0f172a; }
-
+      /*
       .tray {
         position: fixed;
         bottom: 0;
@@ -94,7 +96,7 @@
         transition: all 0.2s ease;
       }
       .tray .control-btn:hover { background: #374151; }
-
+      */
       #selection { position: fixed; pointer-events: none; z-index: 9999; border: 1px dashed rgba(255,255,255,0.6); }
       #selection .handle { position: absolute; width: 28px; height: 28px; background: #E2232A; border-radius: 50%; border: 2px solid #e5e7eb; pointer-events: auto; display: grid; place-items: center; color: #e5e7eb; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
       #selection .h-rotate { top: -14px; right: -14px; cursor: grab; }
@@ -125,7 +127,60 @@
       </div>
     </div>
     
-    <div class="tray">
+    <div class="bottom-bar">
+      <div class="switch-bar">
+        <div id="countdown-timer">00:30</div>
+        <button id="photo-toggle-btn" class="switch-btn active">
+            <img src="assets/AR Scene/Photo Icon.png" alt="Photo Mode">
+            Photo
+        </button>
+        <button id="video-toggle-btn" class="switch-btn">
+            <img src="assets/AR Scene/Video Icon.png" alt="Video Mode">
+            Video
+        </button>
+      </div>
+      <div class="bottom-buttons-container">
+           <div class="switch-cam-container">
+              <button id="add-btn" class="bottom-sheet-cam-btn">
+                  <img src="assets/AR Scene/add sticker icon.png" alt="Switch Camera">
+              </button>
+          </div>
+          <div class="capture-button-container">
+              <button id="capture-btn" class="capture-btn"></button>
+          </div>
+          <div class="switch-cam-container">
+              <button id="cam-btn" class="switch-cam-btn">
+                  <img src="assets/AR Scene/switch camera icon.png" alt="Switch Camera">
+              </button>
+          </div>
+      </div>
+    </div>
+  <div id="preview-container" class="hidden">
+    <div class="blur-overlay"></div>
+    <div class="preview-content">
+      <div id="preview-frame">
+        <img id="preview-image" style="display: none;">
+        <video id="preview-video" controls autoplay muted playsinline style="display: none;"></video>
+        <button id="close-button" class="close-btn">
+          <img src="assets/AR Scene/close button.png" alt="Close">
+        </button>
+      </div>
+      <div class="button-group">
+        <button id="save-button" class="action-btn save-btn save-button-img hidden">
+          <span>Save</span>
+        </button>
+        <button id="share-button" class="action-btn share-btn share-button-img hidden">
+          <span>Share</span>
+        </button>
+      </div>
+    </div>
+  </div>
+ <div class="bottom-sheet" id="bottomSheet">
+      <div class="sheet-header">
+        <span class="sheet-title">Choose Sticker</span>
+        <button class="close-btn" id="closeSheet">✕</button>
+      </div>
+      <div class="try sheet-content">
       <button class="thumb" data-add="afk">
         <img src="/stickers/AFK.svg" alt="AFK" />
       </button>
@@ -159,54 +214,34 @@
       <button class="thumb" data-add="uploaded">
         <img src="/stickers/AFK.svg" alt="Uploaded Image" />
       </button>
-    </div>
-    <div class="bottom-bar">
-      <div class="switch-bar">
-        <div id="countdown-timer">00:30</div>
-        <button id="photo-toggle-btn" class="switch-btn active">
-            <img src="assets/AR Scene/Photo Icon.png" alt="Photo Mode">
-            Photo
-        </button>
-        <button id="video-toggle-btn" class="switch-btn">
-            <img src="assets/AR Scene/Video Icon.png" alt="Video Mode">
-            Video
-        </button>
       </div>
-      <div class="bottom-buttons-container">
-          <div class="capture-button-container">
-              <button id="capture-btn" class="capture-btn"></button>
-          </div>
-          <div class="switch-cam-container">
-              <button id="cam-btn" class="switch-cam-btn">
-                  <img src="assets/AR Scene/switch camera icon.png" alt="Switch Camera">
-              </button>
-          </div>
-      </div>
-    
-  <div id="preview-container" class="hidden">
-    <div class="blur-overlay"></div>
-    <div class="preview-content">
-      <div id="preview-frame">
-        <img id="preview-image" style="display: none;">
-        <video id="preview-video" controls autoplay muted playsinline style="display: none;"></video>
-        <button id="close-button" class="close-btn">
-          <img src="assets/AR Scene/close button.png" alt="Close">
-        </button>
-      </div>
-      <div class="button-group">
-        <button id="save-button" class="action-btn save-btn save-button-img">
-          <span>Save</span>
-        </button>
-        <button id="share-button" class="action-btn share-btn share-button-img">
-          <span>Share</span>
-        </button>
-      </div>
-    </div>
   </div>
-
     <div class="loader-overlay hidden">
         <div class="spinner"></div>
     </div>
+
    <script type="module" src="/viewer.js"></script>
+   <script>
+    const shareButton = document.getElementById('share-button');
+    const saveButton = document.getElementById('save-button');
+    const ua = navigator.userAgent.toLowerCase();
+   // Deteksi OS
+    const isAndroid = /android/i.test(ua);
+    const isIOS = /iphone|ipad|ipod/i.test(ua);
+
+    // Deteksi Browser
+    const isChrome = /chrome|crios/i.test(ua) && !/edge|edgios|opr/i.test(ua);
+    const isFirefox = /firefox/i.test(ua);
+    const isSafari = /safari/i.test(ua) && !/chrome|crios|fxios/i.test(ua);
+
+  if (isAndroid && isChrome) {
+      saveButton.classList.remove("hidden");
+      shareButton.classList.remove("hidden");
+  } else if (isIOS && isSafari){
+      shareButton.classList.remove("hidden");
+  } else if (isIOS && isChrome){
+      shareButton.classList.remove("hidden");
+  }
+  </script>
   </body>
 </html>
