@@ -813,6 +813,29 @@ canvas#editorCanvas {
     height: 20px;
 }
 
+
+/* bottom sheet */
+.bottom-sheet-cam-btn {
+    width: 50px; /* Atur lebar tombol */
+    height: 50px; /* Atur tinggi tombol */
+    border-radius: 50%; /* Membuat tombol menjadi bulat */
+    background-image: url('assets/AR Scene/add sticker icon.png'); /* Gambar latar belakang tombol */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.botton-sheet-cam-btn img {
+    width: 20px; /* Ukuran icon di dalam tombol */
+    height: 20px;
+}
+
 .tray {
   position: fixed; /* Pastikan posisi tetap di bawah */
   bottom: 0;
@@ -999,36 +1022,57 @@ canvas#editorCanvas {
     color: #0b1652;
 }
 
-.loader-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 1001;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-    opacity: 0;
+/* add bottom sheet */
+/* Bottom Sheet */
+.bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -300px; /* hidden */
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+  transition: bottom 0.3s ease;
+  padding: 16px;
+  font-family: sans-serif;
 }
 
-.loader-overlay.show {
-    pointer-events: auto;
-    opacity: 1;
+.bottom-sheet.active {
+  bottom: 0; /* show */
 }
 
-.spinner {
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid #fff;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-.loading-text {
-    margin-top: 15px;
-    color: #fff;
-    font-size: 16px;
+.sheet-title {
+  font-weight: bold;
 }
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.sheet-content {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sticker-btn {
+  flex: 1 1 auto;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #f2f2f2;
+  cursor: pointer;
+}
+.hidden {
+      display: none;
+    }

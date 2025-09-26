@@ -2,6 +2,7 @@ import * as THREE from 'three';
 // Ubah baris ini untuk mencocokkan importmap di HTML
 import { MindARThree } from 'mindar-face-three';
 // AR Viewer with in-AR sticker editing via direct tap and overlay handles
+
 (async function(){
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
@@ -51,15 +52,21 @@ import { MindARThree } from 'mindar-face-three';
   const saveButton = document.getElementById('save-button');
   const shareButton = document.getElementById('share-button');
   const closeButton = document.getElementById('close-button'); // Menggunakan ID yang benar dari HTML yang direvisi
-
+  const bottomSheet = document.getElementById("bottomSheet");
+  const closeSheet = document.getElementById("closeSheet");
+  const addButton = document.getElementById("add-btn");
+  const ua = navigator.userAgent.toLowerCase();
+  
+ 
   // Elemen UI baru
   const photoToggleBtn = document.getElementById('photo-toggle-btn');
   const videoToggleBtn = document.getElementById('video-toggle-btn');
   const captureBtn = document.getElementById('capture-btn');
 
-   const countdownTimerEl = document.getElementById('countdown-timer'); // ** Tambahkan ini **
+  const countdownTimerEl = document.getElementById('countdown-timer'); // ** Tambahkan ini **
   let countdownInterval; // ** Tambahkan ini **
   let countdownTime = 30; // ** Tambahkan ini **
+
 
   // ** Fungsi untuk memulai hitung mundur **
   function startCountdown() {
@@ -274,6 +281,8 @@ import { MindARThree } from 'mindar-face-three';
   }
   
   function startVideoRecording() {
+    
+
     if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video || isRecording) return;
     
     if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
@@ -522,14 +531,15 @@ function hidePreview() {
   // Fungsi untuk berbagi file menggunakan Web Share API
   async function shareFile(url, filename, mimeType) {
       if (navigator.share) {
+        
           try {
               const response = await fetch(url);
               const blob = await response.blob();
               const file = new File([blob], filename, { type: mimeType });
               await navigator.share({
                   files: [file],
-                  title: 'AR Video',
-                  text: 'Lihat video AR saya!',
+                  title: 'image',
+                  text: 'Look at my AR Image!',
               });
               if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
           } catch (error) {
@@ -549,21 +559,30 @@ function hidePreview() {
           if (statusEl) statusEl.textContent = 'Berbagi tidak didukung.';
           return;
       }
-      
+      if (isAndroid){
+          const response = await fetch(url);
+          const blob = await response.blob();
+      }else{
       try {
           const response = await fetch(url);
           const blob = await response.blob();
           
           let targetMime = blob.type;
-          if (blob.type.includes('webm')) {
-              targetMime = 'video/webm';
-              console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
-          }
+            if (blob.type.includes('webm')) {
+            targetMime = 'video/webm';
+            console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
+         }
+        //const ffmpeg = createFFmpeg({ log: true });
+        //await ffmpeg.load();
 
-          const file = new File([blob], `ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
+        //ffmpeg.FS("writeFile", "input.webm", await fetchFile(blob));
+        //await ffmpeg.run("-i", "input.webm", "-c:v", "libx264", "output.mp4");
 
+        //const data = ffmpeg.FS("readFile", "output.mp4");
+        //finalBlob = new Blob([data.buffer], { type: "video/mp4" });
+        const file = new File([blob],`ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
           await navigator.share({
-              files: [file],
+              files: [finalBlob],
               title: 'AR Video',
               text: 'Lihat video AR saya!',
           });
@@ -572,6 +591,7 @@ function hidePreview() {
           console.error('Gagal berbagi:', error);
           if (statusEl) statusEl.textContent = `Berbagi gagal: ${error.message}`;
       }
+    }
   }
 
   // Event listener untuk tombol keluar baru
@@ -585,7 +605,16 @@ function hidePreview() {
           hidePreview();
       }
   });
+ 
+   // Left button -> open bottom sheet
+  addButton.addEventListener("click", () => {
+    bottomSheet.classList.add("active");
+  });
 
+  // Close sheet
+  closeSheet.addEventListener("click", () => {
+    bottomSheet.classList.remove("active");
+  });
 
   // Fungsionalitas baru untuk tombol toggle Photo/Video
   function setMode(mode) {
@@ -779,12 +808,12 @@ function hidePreview() {
   function setActive(key) {
     active = key;
     updateSelectionOverlay();
-    document.querySelectorAll('.tray .thumb').forEach(el => {
+    document.querySelectorAll(' .thumb').forEach(el => {
       if (!key) { el.classList.remove('active'); return; }
       el.classList.toggle('active', el.getAttribute('data-add') === key);
     });
     if (key) {
-      const sel = document.querySelector(`.tray .thumb[data-add="${key}"]`);
+      const sel = document.querySelector(` .thumb[data-add="${key}"]`);
       if (sel) {
         sel.classList.remove('bounce');
         requestAnimationFrame(() => {
@@ -923,7 +952,7 @@ function hidePreview() {
   container.addEventListener('pointerup', endPointer);
   container.addEventListener('pointercancel', endPointer);
 
-  document.querySelectorAll('.tray .thumb').forEach(btn => {
+  document.querySelectorAll(' .thumb').forEach(btn => {
     const key = btn.getAttribute('data-add');
     const imgEl = btn.querySelector('img');
     
@@ -1120,4 +1149,53 @@ function hidePreview() {
   }
   window.addEventListener('pageshow', () => setTimeout(maybeRecoverCamera, 300));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(maybeRecoverCamera, 300); });
+  
 })();
+/**
+ * Fungsi untuk berbagi file dengan aman, setelah memvalidasi tipe dan dukungan sistem.
+ * @param {File} fileToShare - Objek file yang akan dibagikan.
+ */
+async function shareFileSafely(fileToShare) {
+    // 1. Validasi Tipe File (MIME Type)
+    const allowedMimeTypes = ['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedMimeTypes.includes(fileToShare.type)) {
+        alert(`Maaf, format file ${fileToShare.type} tidak didukung untuk dibagikan.`);
+        return;
+    }
+
+    // 2. Siapkan data untuk dibagikan dan divalidasi
+    const shareData = {
+        title: `Bagikan File: ${fileToShare.name}`,
+        files: [fileToShare],
+    };
+
+    // 3. Gunakan navigator.canShare() untuk memastikan dukungan sistem
+    if (navigator.share && navigator.canShare(shareData)) {
+        try {
+            // Jika didukung, panggil navigator.share()
+            await navigator.share(shareData);
+            console.log('File berhasil dibagikan!');
+        } catch (error) {
+            // Menangani kasus jika pengguna membatalkan dialog share atau ada error lain
+            if (error.name !== 'AbortError') {
+                console.error('Terjadi kesalahan saat mencoba berbagi:', error);
+                alert(`Error: ${error.message}`);
+            } else {
+                console.log('Pengguna membatalkan proses berbagi.');
+            }
+        }
+    } else {
+        // Jika tidak didukung, berikan feedback ke pengguna
+        console.warn('Pembagian file tidak didukung oleh browser/OS ini.');
+        alert('Maaf, fitur berbagi tidak tersedia di perangkat atau browser Anda.');
+    }
+}
+
+// --- Cara Menggunakannya ---
+
+// Misalkan Anda memiliki file dari input atau dibuat secara dinamis
+const myBlob = new Blob(['konten video palsu'], { type: 'video/mp4' });
+const myFile = new File([myBlob], 'video_keren.mp4', { type: 'video/mp4' });
+
+// Panggil fungsi tersebut, misalnya dari sebuah event listener tombol
+// document.getElementById('shareButton').onclick = () => shareFileSafely(myFile);
