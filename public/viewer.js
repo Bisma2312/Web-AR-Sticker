@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-// Ubah baris ini untuk mencocokkan importmap di HTML
 import { MindARThree } from 'mindar-face-three';
+import { createFFmpeg, fetchFile } from 'ffmpeg';
 // AR Viewer with in-AR sticker editing via direct tap and overlay handles
-
 (async function(){
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
@@ -381,24 +380,33 @@ async function loadFFmpeg() {
     if (ffmpegLoaded) return;
     
     // Pastikan FFmpeg tersedia di window sebelum mencoba menggunakannya
-    if (!window.FFmpeg) {
-        console.error('Perpustakaan FFmpeg tidak tersedia.');
-        showLoader('Gagal memuat konverter. Coba muat ulang halaman.');
-        return;
-    }
-    
-    showLoader('Memuat konverter...');
-    const { createFFmpeg, fetchFile } = window.FFmpeg;
-    ffmpeg = createFFmpeg({
-      log: true,
-      corePath: 'https://unpkg.com/@ffmpeg/core@0.12.7/dist/ffmpeg-core.js',
-    });
-    await ffmpeg.load();
-    ffmpegLoaded = true;
-    hideLoader();
-    console.log('FFmpeg.js berhasil dimuat.');
-}
+    // if (!window.FFmpeg) {
+    //     console.error('Perpustakaan FFmpeg tidak tersedia.');
+    //     showLoader('Gagal memuat konverter. Coba muat ulang halaman.');
+    //     return;
+    // }
+   
+       showLoader('Memuat konverter...');
 
+    // Hapus semua logika pengecekan timing/global
+    
+    try {
+        // Gunakan createFFmpeg() yang diimpor dari atas
+        ffmpeg = createFFmpeg({
+            // Core path juga harus menggunakan UNPKG, dan UMD yang benar (karena FFmpeg 0.12.7 memaksa UMD core)
+            corePath: 'https://unpkg.com/@ffmpeg/core@0.12.7/dist/umd/ffmpeg-core.js', 
+            log: true,
+        });
+        
+        await ffmpeg.load();
+        ffmpegLoaded = true;
+        showLoader('Konverter dimuat. Siap!');
+
+    } catch (error) {
+        console.error('Gagal memuat FFmpeg Core:', error);
+        showLoader('Gagal memuat konverter. Error teknis: ' + error.message);
+    }
+}
 
 function showLoader(message = 'Mengonversi video...') {
     // Ambil elemen dari DOM di dalam fungsi
@@ -476,11 +484,22 @@ async function stopVideoRecording() {
     console.log('Video recording stopped. Starting conversion...');
 
     try {
+        await loadFFmpeg();
+    } catch (e) {
+        console.error("Gagal memuat FFmpeg sebelum konversi:", e);
+        showLoader('Konversi gagal: FFmpeg tidak termuat.');
+        hideLoader();
+        return; // Hentikan fungsi jika load gagal
+    }
+    // ==========================================================
+    
+    try {
         const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-        const inputFilename = 'input.webm'; // Nama file input di memori FFmpeg
+        const inputFilename = 'input.webm';
 
-        // Tulis blob video ke memori virtual FFmpeg
-        await ffmpeg.FS('writeFile', inputFilename, await fetchFile(superBuffer));
+        // BARIS BERIKUTNYA MENGGUNAKAN ffmpeg.FS dan fetchFile
+        // Baris ini sekarang aman karena Anda sudah menunggu loadFFmpeg() di atas.
+        await ffmpeg.FS('writeFile', inputFilename, await fetchFile(superBuffer)); 
 
         // Jalankan perintah konversi
         const outputFilename = 'output.mp4';
