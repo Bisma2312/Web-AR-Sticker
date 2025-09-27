@@ -1,53 +1,77 @@
 // /api/convert.js
 
-// Mengimpor modul Node.js yang dibutuhkan
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
 
+// 1. KONFIGURASI WAJIB: Matikan Body Parser Vercel
+// Ini memungkinkan kita membaca raw stream untuk binary data (video).
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: '100mb', // Opsional: Naikkan batas respons untuk file video besar
+  },
+};
+
+// Fungsi utilitas untuk membaca raw stream ke dalam Buffer
+function buffer(readable) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        readable.on('error', reject);
+        readable.on('data', (chunk) => {
+            // Memastikan data yang masuk adalah Buffer
+            if (typeof chunk === 'string') {
+                chunks.push(Buffer.from(chunk));
+            } else {
+                chunks.push(chunk);
+            }
+        });
+        readable.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+}
+
 // Penting: Beri tahu fluent-ffmpeg di mana menemukan binary FFmpeg
-// ffmpeg-static sudah disertakan di node_modules Vercel.
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
 // Handler utama Vercel Serverless Function
 module.exports = async (req, res) => {
-    // Hanya menerima permintaan POST dari frontend
     if (req.method !== 'POST') {
         return res.status(405).send('Method Not Allowed');
     }
 
-    // Tentukan direktori temporer (os.tmpdir() adalah standar di Vercel)
     const tempDir = os.tmpdir();
     let inputPath, outputPath;
 
     try {
-        // Vercel menerima Buffer dari body request, yang dikirim oleh videoBlob
-        const inputBuffer = req.body; 
+        // PERBAIKAN KRUSIAL: Baca raw stream secara manual
+        const inputBuffer = await buffer(req); 
         
-        // 1. Tulis Buffer ke File Temporer sebagai Input (WebM/Video Blob)
+        if (!inputBuffer || inputBuffer.length === 0) {
+            console.error('Buffer input kosong.');
+            return res.status(400).send('Permintaan video kosong.');
+        }
+        
+        // 1. Tulis Buffer ke File Temporer sebagai Input
         const timestamp = Date.now();
-        // Asumsi format input adalah webm, tetapi Anda bisa menyesuaikannya
         inputPath = path.join(tempDir, `input-${timestamp}.webm`);
         outputPath = path.join(tempDir, `output-${timestamp}.mp4`);
         
+        // BARIS INI KINI AMAN KARENA inputBuffer ADALAH BUFFER
         fs.writeFileSync(inputPath, inputBuffer);
         console.log(`File input sementara dibuat: ${inputPath}`);
 
         // 2. Jalankan Konversi menggunakan fluent-ffmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // Konfigurasi konversi yang dioptimalkan untuk kecepatan di Serverless
                 .videoCodec('libx264')
                 .outputOptions([
-                    // PENTING: Gunakan preset PALING CEPAT untuk menghindari timeout Vercel
                     '-preset ultrafast', 
-                    // Mengurangi kualitas sedikit (nilai lebih tinggi = lebih cepat/kecil)
                     '-crf 28', 
                     '-c:a aac',
                     '-b:a 128k',
-                    '-movflags +faststart' // Memastikan video siap dimainkan saat streaming
+                    '-movflags +faststart'
                 ])
                 .on('end', () => {
                     console.log('Konversi FFmpeg Selesai!');
@@ -63,7 +87,6 @@ module.exports = async (req, res) => {
         // 3. Baca File Output dan Kirim Kembali ke Browser
         const outputBuffer = fs.readFileSync(outputPath);
 
-        // Set header untuk mengirim file video MP4
         res.setHeader('Content-Type', 'video/mp4');
         res.setHeader('Content-Length', outputBuffer.length);
         res.status(200).send(outputBuffer);
@@ -73,7 +96,7 @@ module.exports = async (req, res) => {
         // Kirim pesan error kembali ke frontend
         res.status(500).send(`Internal Server Error: ${error.message}`);
     } finally {
-        // 4. Bersihkan File Temporer (KRUSIAL di Serverless untuk membebaskan ruang)
+        // 4. Bersihkan File Temporer
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer telah dibersihkan.');
