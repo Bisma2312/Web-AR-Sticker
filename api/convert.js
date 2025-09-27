@@ -11,8 +11,12 @@ const multer = require('multer'); // BARU: Middleware untuk menangani FormData
 // Fungsi utilitas untuk promisify (mengubah callback menjadi Promise)
 const upload = util.promisify(multer().single('video')); // 'video' HARUS SAMA dengan nama yang digunakan di formData.append('video', ...)
 
-// 1. KONFIGURASI WAJIB: Matikan Body Parser Vercel
+// 1. KONFIGURASI KRUSIAL: Mematikan Body Parser dan MENAMBAH BATASAN VERCEL
 export const config = {
+  // Peningkatan batas memori (dari default 128mb ke 1024mb)
+  memory: 1024, 
+  // Peningkatan batas durasi eksekusi (dari default 10s ke 60s)
+  maxDuration: 60, 
   api: {
     bodyParser: false, // Wajib jika menggunakan Multer
     responseLimit: '100mb', 
