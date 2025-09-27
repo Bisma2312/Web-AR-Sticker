@@ -423,11 +423,10 @@ function showPreview(url, type) {
   }
     // Logika baru untuk menyembunyikan tombol Save di iOS
   if (isIOS) {
-    shareButton.classList.remove('hidden');
+    saveButton.style.display = 'none';
     console.log('Detected iOS. Hiding Save button for all media types.');
   } else {
-    saveButton.classList.remove('hidden');
-    shareButton.classList.remove('hiden'); // Tampilkan tombol Save
+    saveButton.style.display = ''; // Tampilkan tombol Save
   }
   previewContainer.classList.remove('hidden');
   previewContainer.style.pointerEvents = 'auto';
