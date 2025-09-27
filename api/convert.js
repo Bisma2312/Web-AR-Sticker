@@ -7,15 +7,15 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
 
 // 1. KONFIGURASI WAJIB: Matikan Body Parser Vercel
-// Ini memungkinkan kita membaca raw stream untuk binary data (video).
+// Ini adalah langkah KRUSIAL untuk membaca data binary (video) secara manual.
 export const config = {
   api: {
-    bodyParser: false,
-    responseLimit: '100mb', // Opsional: Naikkan batas respons untuk file video besar
+    bodyParser: false, // Mematikan parser Vercel default
+    responseLimit: '100mb', // Opsional: Batas respon yang lebih besar
   },
 };
 
-// Fungsi utilitas untuk membaca raw stream ke dalam Buffer
+// Fungsi utilitas untuk membaca raw stream (permintaan) ke dalam Buffer
 function buffer(readable) {
     return new Promise((resolve, reject) => {
         const chunks = [];
@@ -45,12 +45,13 @@ module.exports = async (req, res) => {
     let inputPath, outputPath;
 
     try {
-        // PERBAIKAN KRUSIAL: Baca raw stream secara manual
+        // PERBAIKAN KRUSIAL: Baca raw stream secara manual dari request
         const inputBuffer = await buffer(req); 
         
         if (!inputBuffer || inputBuffer.length === 0) {
-            console.error('Buffer input kosong.');
-            return res.status(400).send('Permintaan video kosong.');
+            console.error('Buffer input kosong. Data tidak diterima dari browser.');
+            // Mengembalikan error 400 jika data kosong
+            return res.status(400).send('Permintaan video kosong. (Data tidak terkirim)'); 
         }
         
         // 1. Tulis Buffer ke File Temporer sebagai Input
@@ -58,7 +59,6 @@ module.exports = async (req, res) => {
         inputPath = path.join(tempDir, `input-${timestamp}.webm`);
         outputPath = path.join(tempDir, `output-${timestamp}.mp4`);
         
-        // BARIS INI KINI AMAN KARENA inputBuffer ADALAH BUFFER
         fs.writeFileSync(inputPath, inputBuffer);
         console.log(`File input sementara dibuat: ${inputPath}`);
 
@@ -78,6 +78,7 @@ module.exports = async (req, res) => {
                     resolve();
                 })
                 .on('error', (err) => {
+                    // Cek error dari FFmpeg
                     console.error('FFmpeg Error:', err.message);
                     reject(new Error(`Konversi gagal: ${err.message}`));
                 })
@@ -92,8 +93,8 @@ module.exports = async (req, res) => {
         res.status(200).send(outputBuffer);
 
     } catch (error) {
+        // Log error di Vercel dan kirimkan 500
         console.error('Server Error (500):', error.message);
-        // Kirim pesan error kembali ke frontend
         res.status(500).send(`Internal Server Error: ${error.message}`);
     } finally {
         // 4. Bersihkan File Temporer

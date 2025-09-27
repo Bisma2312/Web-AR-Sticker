@@ -479,16 +479,14 @@ async function stopVideoRecording() {
     console.log('Video recording stopped. Starting conversion...');
 
      try {
-        const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+       const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
         
-        // --- PANGGILAN API BARU DIMULAI ---
         const response = await fetch('/api/convert', {
             method: 'POST',
-            // Kirim Blob video (WebM) ke server
             body: videoBlob, 
             headers: {
-                // Sangat penting untuk memberi tahu server jenis data yang dikirim
-                'Content-Type': mediaRecorder.mimeType || 'video/webm'
+                // KRUSIAL: Ini memberi tahu Vercel cara membaca data
+                'Content-Type': mediaRecorder.mimeType || 'video/webm' 
             }
         });
 
