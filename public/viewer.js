@@ -603,10 +603,10 @@ function hidePreview() {
           if (statusEl) statusEl.textContent = 'Berbagi tidak didukung.';
           return;
       }
-      if (isAndroid){
-          const response = await fetch(url);
-          const blob = await response.blob();
-      }else{
+      // if (isAndroid){
+      //     const response = await fetch(url);
+      //     const blob = await response.blob();
+      // }else{
       try {
           const response = await fetch(url);
           const blob = await response.blob();
@@ -627,7 +627,7 @@ function hidePreview() {
           console.error('Gagal berbagi:', error);
           if (statusEl) statusEl.textContent = `Berbagi gagal: ${error.message}`;
       }
-    }
+    // }
   }
 
   // Event listener untuk tombol keluar baru
