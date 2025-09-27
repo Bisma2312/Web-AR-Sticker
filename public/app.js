@@ -500,7 +500,7 @@ function App() {
                 </div>
               )}
               
-             <p style={{marginTop: '12px', color: '#3b5cd0'}}>go OOO – scan to try the filter!</p>
+             <p style={{marginTop: '12px', color: '#3b5cd0'}}>Step Out of Office. Scan to recharge!</p>
               {/* Still Needed For Debuging Purpose */}
               {uploadResp && (
                 <div className="results-links">

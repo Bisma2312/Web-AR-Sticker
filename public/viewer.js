@@ -286,6 +286,17 @@ import { MindARThree } from 'mindar-face-three';
     
     if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
 
+    const camBtn = document.getElementById('cam-btn');
+    if (camBtn) {
+        camBtn.disabled = true; // **NONAKTIFKAN TOMBOL SAAT MEREKAM**
+    }
+
+    if (photoToggleBtn) {
+        photoToggleBtn.disabled = true; // **NONAKTIFKAN TOMBOL PHOTO MODE**
+    }
+
+    overlay.style.display = 'none';
+
     recordingCanvas = document.createElement('canvas');
     recordingCanvas.width = mindarThree.renderer.domElement.width;
     recordingCanvas.height = mindarThree.renderer.domElement.height;
@@ -429,9 +440,16 @@ function showPreview(url, type) {
     saveButton.classList.remove('hidden');
     shareButton.classList.remove('hidden'); // Tampilkan tombol Save
   }
+
+  overlay.style.display = 'none';
   previewContainer.classList.remove('hidden');
   previewContainer.style.pointerEvents = 'auto';
   if (statusEl) statusEl.textContent = 'Previewing ' + type;
+
+  if (renderer && renderer.setAnimationLoop) {
+      renderer.setAnimationLoop(null);
+      console.log('MindAR animation loop paused for preview.');
+  }
 }
 
 async function stopVideoRecording() {
@@ -442,6 +460,10 @@ async function stopVideoRecording() {
     if (videoRecordLoop) {
         cancelAnimationFrame(videoRecordLoop);
         videoRecordLoop = null;
+    }
+
+    if (photoToggleBtn) {
+        photoToggleBtn.disabled = false; // **AKTIFKAN KEMBALI TOMBOL PHOTO MODE**
     }
 
     mediaRecorder.stop();
@@ -489,19 +511,24 @@ async function stopVideoRecording() {
         try { ffmpeg.FS('unlink', 'output.mp4'); } catch (_) {}
     }
 
-    // Kembalikan loop animasi MindAR setelah selesai
-    if (renderer && renderer.setAnimationLoop) {
-        renderer.setAnimationLoop(() => {
-            renderer.render(scene, camera);
-            updateSelectionOverlay();
-            updateStickerPositions();
-        });
-    }
+    // // Kembalikan loop animasi MindAR setelah selesai
+    // if (renderer && renderer.setAnimationLoop) {
+    //     renderer.setAnimationLoop(() => {
+    //         renderer.render(scene, camera);
+    //         updateSelectionOverlay();
+    //         updateStickerPositions();
+    //     });
+    // }
 
     // Reset variabel perekaman
     recordingCanvas = null;
     recordingCtx = null;
     recordedBlobs = [];
+
+    const camBtn = document.getElementById('cam-btn');
+    if (camBtn) {
+        camBtn.disabled = false; // **AKTIFKAN KEMBALI TOMBOL SETELAH SELESAI MEREKAM**
+    }
   }
   
   // Fungsi untuk menyembunyikan pratinjau
@@ -515,6 +542,22 @@ function hidePreview() {
         // Nonaktifkan interaksi mouse PADA kontainer pratinjau
         // Ini akan membiarkan klik menembus ke stiker di belakangnya
         previewContainer.style.pointerEvents = 'none';
+        
+         if (renderer && renderer.setAnimationLoop) {
+            renderer.setAnimationLoop(() => {
+                try {
+                    if (renderer && scene && camera) {
+                        renderer.render(scene, camera); 
+                        updateSelectionOverlay(); // Sekarang akan memeriksa `previewContainer.classList.contains('hidden')`
+                        updateStickerPositions();
+                    }
+                } catch (error) {
+                    console.error('Render loop error:', error);
+                    if (statusEl) statusEl.textContent = 'Render error occurred';
+                }
+            });
+            console.log('MindAR animation loop resumed after preview.');
+          }
     }
 }
 
@@ -539,8 +582,8 @@ function hidePreview() {
               const file = new File([blob], filename, { type: mimeType });
               await navigator.share({
                   files: [file],
-                  //title: 'image',
-                  //text: 'Look at my AR Image!',
+                  title: 'The Recharge Room by Lenovo',
+                  text: 'Currently Out of Office — recharging, BRB! 😴',
               });
               if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
           } catch (error) {
@@ -575,7 +618,9 @@ function hidePreview() {
          }
         const file = new File([blob],`ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
           await navigator.share({
-              files: [file]
+              files: [file],
+              title: 'Recharge Room by Lenovo',
+              text: 'Currently Out of Office — recharging, BRB! 😴',
           });
           if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
       } catch (error) {
@@ -856,6 +901,16 @@ function hidePreview() {
   }
   const getGestureSensitivity = () => isMobile ? 0.0015 : 0.0025;
   function updateSelectionOverlay(){
+    const previewContainer = document.getElementById('preview-container');
+    const isPreviewActive = previewContainer && !previewContainer.classList.contains('hidden');
+
+     if (isPreviewActive || !active || !instances[active] || !instances[active].visible) { 
+        overlay.style.display = 'none'; 
+        return; // Hentikan fungsi jika pratinjau aktif atau stiker tidak aktif/terlihat
+    }
+    
+    overlay.style.display = 'block';
+
     if (!active || !instances[active] || !instances[active].visible) { overlay.style.display = 'none'; return; }
     overlay.style.display = 'block';
     const inst = instances[active]; const m = inst.mesh;
@@ -1113,7 +1168,7 @@ function hidePreview() {
   // ** NEW: Tambahkan event listeners untuk tombol Save dan Share **
   saveButton.addEventListener('click', () => {
     if (currentPreviewUrl) {
-      const filename = currentPreviewType === 'photo' ? 'photo.png' : 'video.mp4';
+      const filename = currentPreviewType === 'photo' ? 'The Recharge Room by Lenovo.png' : 'The Recharge Room by Lenovo.mp4';
       saveFile(currentPreviewUrl, filename);
     }
   });
