@@ -427,7 +427,7 @@ function showPreview(url, type) {
     console.log('Detected iOS. Hiding Save button for all media types.');
   } else {
     saveButton.classList.remove('hidden');
-    shareButton.classList.remove('hiden'); // Tampilkan tombol Save
+    shareButton.classList.remove('hidden'); // Tampilkan tombol Save
   }
   previewContainer.classList.remove('hidden');
   previewContainer.style.pointerEvents = 'auto';
