@@ -56,7 +56,6 @@ import { MindARThree } from 'mindar-face-three';
   const overlaySheet = document.getElementById("overlaySheet");
   const closeSheet = document.getElementById("closeSheet");
   const addButton = document.getElementById("add-btn");
- 
   
  
   // Elemen UI baru
@@ -424,7 +423,7 @@ function showPreview(url, type) {
   }
     // Logika baru untuk menyembunyikan tombol Save di iOS
   if (isIOS) {
-    saveButton.classList.remove('hidden');
+    shareButton.classList.remove('hidden');
     console.log('Detected iOS. Hiding Save button for all media types.');
   } else {
     saveButton.classList.remove('hidden');
