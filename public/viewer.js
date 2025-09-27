@@ -53,9 +53,10 @@ import { MindARThree } from 'mindar-face-three';
   const shareButton = document.getElementById('share-button');
   const closeButton = document.getElementById('close-button'); // Menggunakan ID yang benar dari HTML yang direvisi
   const bottomSheet = document.getElementById("bottomSheet");
+  const overlaySheet = document.getElementById("overlaySheet");
   const closeSheet = document.getElementById("closeSheet");
   const addButton = document.getElementById("add-btn");
-  const ua = navigator.userAgent.toLowerCase();
+ 
   
  
   // Elemen UI baru
@@ -282,7 +283,6 @@ import { MindARThree } from 'mindar-face-three';
   
   function startVideoRecording() {
     
-
     if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video || isRecording) return;
     
     if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
@@ -424,10 +424,11 @@ function showPreview(url, type) {
   }
     // Logika baru untuk menyembunyikan tombol Save di iOS
   if (isIOS) {
-    saveButton.style.display = 'none';
+    saveButton.classList.remove('hidden');
     console.log('Detected iOS. Hiding Save button for all media types.');
   } else {
-    saveButton.style.display = ''; // Tampilkan tombol Save
+    saveButton.classList.remove('hidden');
+    shareButton.classList.remove('hiden'); // Tampilkan tombol Save
   }
   previewContainer.classList.remove('hidden');
   previewContainer.style.pointerEvents = 'auto';
@@ -435,6 +436,7 @@ function showPreview(url, type) {
 }
 
 async function stopVideoRecording() {
+    
     if (!isRecording || !mediaRecorder) return;
 
     // Matikan loop gambar saat perekaman berhenti
@@ -538,8 +540,8 @@ function hidePreview() {
               const file = new File([blob], filename, { type: mimeType });
               await navigator.share({
                   files: [file],
-                  title: 'image',
-                  text: 'Look at my AR Image!',
+                  //title: 'image',
+                  //text: 'Look at my AR Image!',
               });
               if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
           } catch (error) {
@@ -572,19 +574,9 @@ function hidePreview() {
             targetMime = 'video/webm';
             console.warn('Mencoba berbagi video WebM. Beberapa aplikasi mungkin tidak mendukungnya.');
          }
-        //const ffmpeg = createFFmpeg({ log: true });
-        //await ffmpeg.load();
-
-        //ffmpeg.FS("writeFile", "input.webm", await fetchFile(blob));
-        //await ffmpeg.run("-i", "input.webm", "-c:v", "libx264", "output.mp4");
-
-        //const data = ffmpeg.FS("readFile", "output.mp4");
-        //finalBlob = new Blob([data.buffer], { type: "video/mp4" });
         const file = new File([blob],`ar-video.${targetMime.includes('mp4') ? 'mp4' : 'webm'}`, { type: targetMime });
           await navigator.share({
-              files: [finalBlob],
-              title: 'AR Video',
-              text: 'Lihat video AR saya!',
+              files: [file]
           });
           if (statusEl) statusEl.textContent = 'Berbagi berhasil!';
       } catch (error) {
@@ -608,11 +600,13 @@ function hidePreview() {
  
    // Left button -> open bottom sheet
   addButton.addEventListener("click", () => {
+    overlaySheet.classList.add("active");
     bottomSheet.classList.add("active");
   });
 
   // Close sheet
-  closeSheet.addEventListener("click", () => {
+  closeSheet.addEventListener("click", (e) => {
+    overlaySheet.classList.remove("active");
     bottomSheet.classList.remove("active");
   });
 
@@ -840,7 +834,7 @@ function hidePreview() {
   const btnBack = document.createElement('button'); btnBack.className = 'btn'; btnBack.textContent = 'Back';
   const btnReset = document.createElement('button'); btnReset.className = 'btn'; btnReset.textContent = 'Reset';
   const btnDel = document.createElement('button'); btnDel.className = 'btn'; btnDel.textContent = 'Delete';
-  bar.append(btnFront, btnBack, btnReset, btnDel);
+  bar.append(btnReset, btnDel);
   const hRotate = document.createElement('div'); hRotate.className = 'handle h-rotate'; hRotate.textContent = '⤾';
   const hScale = document.createElement('div'); hScale.className = 'handle h-scale'; hScale.textContent = '⤢';
   overlay.append(bar, hRotate, hScale);

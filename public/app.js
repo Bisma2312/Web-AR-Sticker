@@ -500,21 +500,9 @@ function App() {
                 </div>
               )}
               
-             <p style={{marginTop: '12px', color: '#3b5cd0'}}>Scan the QR Code to try the filter!</p>
-             <p style={{marginTop: '12px', color: '#3b5cd0'}}>Use HTTPS on mobile to allow camera.</p>
-
+             <p style={{marginTop: '12px', color: '#3b5cd0'}}>go OOO – scan to try the filter!</p>
               {/* Still Needed For Debuging Purpose */}
-              {uploadResp && (
-                <div className="results-links">
-                  <a className="btn primary" href={uploadResp.viewerUrl} target="_blank" rel="noreferrer">
-                    Open AR Viewer
-                  </a>
-                  <div className="url-display">
-                    <span className="url-label">Viewer URL:</span>
-                    <span className="url-text">{location.origin}{uploadResp.viewerUrl}</span>
-                  </div>
-                </div>
-              )}
+    
             </div>
           </div>
           

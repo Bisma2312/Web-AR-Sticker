@@ -108,16 +108,7 @@
   </head>
   <body>
     <div id="ar"></div>
-    <div class="top">
-      <div class="chip">AR Viewer</div>
-      <div style="display:flex; gap:8px; align-items:center; pointer-events:auto;">
-        <!-- <button id="mode-toggle-btn" class="chip button">📷</button>
-        <button id="capture-btn" class="chip button">Capture</button>
-        <button id="cam-btn" class="chip button">Switch Cam</button> -->
-        <div id="status" class="chip">Loading...</div>
-      </div>
-    </div>
-    
+  
     <div class="bottom-bar">
       <div class="switch-bar">
         <div id="countdown-timer">00:30</div>
@@ -166,45 +157,46 @@
       </div>
     </div>
   </div>
+  <div class="overlay" id="overlaySheet">
  <div class="bottom-sheet" id="bottomSheet">
       <div class="sheet-header">
         <span class="sheet-title">Choose Sticker</span>
         <button class="close-btn" id="closeSheet">✕</button>
       </div>
-      <div class="try sheet-content">
-      <button class="thumb" data-add="afk">
-        <img src="/stickers/AFK.svg" alt="AFK" />
-      </button>
-      <button class="thumb" data-add="battery">
-        <img src="/stickers/Battery.svg" alt="Battery" />
-      </button>
-      <button class="thumb" data-add="clouds">
-        <img src="/stickers/Clouds.svg" alt="Clouds" />
-      </button>
-      <button class="thumb" data-add="detox">
-        <img src="/stickers/Detox.svg" alt="Detox" />
-      </button>
-      <button class="thumb" data-add="dnd">
-        <img src="/stickers/DND.svg" alt="DND" />
-      </button>
-       <button class="thumb" data-add="lightning">
-        <img src="/stickers/Lightning.svg" alt="Lightning" />
-      </button>
-      <button class="thumb" data-add="crown">
-        <img src="/stickers/Pixel Crown.svg" alt="Crown" />
-      </button>
-      <button class="thumb" data-add="heart">
-        <img src="/stickers/Pixel Heart.svg" alt="Heart" />
-      </button>
-      <button class="thumb" data-add="sparkles">
-        <img src="/stickers/Sparkles.svg" alt="Sparkles" />
-      </button>
-      <button class="thumb" data-add="zzz">
-        <img src="/stickers/ZZZ.svg" alt="ZZZ" />
-      </button>
-      <button class="thumb" data-add="uploaded">
-        <img src="/stickers/AFK.svg" alt="Uploaded Image" />
-      </button>
+      <div class="grid try">
+          <button class="thumb" data-add="uploaded">
+            <img src="/stickers/AFK.svg" alt="Uploaded Image" />
+          </button>
+          <button class="thumb" data-add="battery">
+            <img src="/stickers/Battery.svg" alt="Battery" />
+          </button>
+          <button class="thumb" data-add="clouds">
+            <img src="/stickers/Clouds.svg" alt="Clouds" />
+          </button>
+          <button class="thumb" data-add="detox">
+            <img src="/stickers/Detox.svg" alt="Detox" />
+          </button>
+          <button class="thumb" data-add="dnd">
+            <img src="/stickers/DND.svg" alt="DND" />
+          </button>
+          <button class="thumb" data-add="lightning">
+            <img src="/stickers/Lightning.svg" alt="Lightning" />
+          </button>
+          <button class="thumb" data-add="crown">
+            <img src="/stickers/Pixel Crown.svg" alt="Crown" />
+          </button>
+          <button class="thumb" data-add="heart">
+            <img src="/stickers/Pixel Heart.svg" alt="Heart" />
+          </button>
+          <button class="thumb" data-add="sparkles">
+            <img src="/stickers/Sparkles.svg" alt="Sparkles" />
+          </button>
+          <button class="thumb" data-add="zzz">
+            <img src="/stickers/ZZZ.svg" alt="ZZZ" />
+          </button>
+          <button class="thumb" data-add="afk">
+            <img src="/stickers/AFK.svg" alt="AFK" />
+          </button>
       </div>
   </div>
     <div class="loader-overlay hidden">
@@ -212,27 +204,6 @@
     </div>
 
    <script type="module" src="/viewer.js"></script>
-   <script>
-    const shareButton = document.getElementById('share-button');
-    const saveButton = document.getElementById('save-button');
-    const ua = navigator.userAgent.toLowerCase();
-   // Deteksi OS
-    const isAndroid = /android/i.test(ua);
-    const isIOS = /iphone|ipad|ipod/i.test(ua);
 
-    // Deteksi Browser
-    const isChrome = /chrome|crios/i.test(ua) && !/edge|edgios|opr/i.test(ua);
-    const isFirefox = /firefox/i.test(ua);
-    const isSafari = /safari/i.test(ua) && !/chrome|crios|fxios/i.test(ua);
-
-  if (isAndroid && isChrome) {
-      saveButton.classList.remove("hidden");
-      shareButton.classList.remove("hidden");
-  } else if (isIOS && isSafari){
-      shareButton.classList.remove("hidden");
-  } else if (isIOS && isChrome){
-      shareButton.classList.remove("hidden");
-  }
-  </script>
   </body>
 </html>

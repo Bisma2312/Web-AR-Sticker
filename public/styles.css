@@ -24,7 +24,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 25px;
+  padding-left: 22px;
+  padding-right: 0px;
+  padding-top: 15px;
   position: fixed;
   top: 0; left: 0;
   width: 100%;
@@ -47,7 +49,7 @@
 .logo-group {
   display: flex;
   align-items: center; /* Menjaga logo tetap sejajar di tengah secara vertikal */
-  gap: 10px; /* Atur jarak antar logo sesuai kebutuhan */
+  gap: 30px; /* Atur jarak antar logo sesuai kebutuhan */
 }
 
 .back-btn {
@@ -708,7 +710,7 @@ canvas#editorCanvas {
 
 .bottom-bar {
   position: fixed;
-  bottom: 100px; /* Atur jarak dari bawah. Sesuaikan nilainya jika diperlukan */
+  bottom: 10px; /* Atur jarak dari bawah. Sesuaikan nilainya jika diperlukan */
   left: 0;
   right: 0;
   display: flex;
@@ -819,7 +821,7 @@ canvas#editorCanvas {
     width: 50px; /* Atur lebar tombol */
     height: 50px; /* Atur tinggi tombol */
     border-radius: 50%; /* Membuat tombol menjadi bulat */
-    background-image: url('assets/AR Scene/add sticker icon.png'); /* Gambar latar belakang tombol */
+    background-image: url('assets/AR Scene/Button kiri kanan.png'); /* Gambar latar belakang tombol */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -831,7 +833,7 @@ canvas#editorCanvas {
     cursor: pointer;
 }
 
-.botton-sheet-cam-btn img {
+.bottom-sheet-cam-btn img {
     width: 20px; /* Ukuran icon di dalam tombol */
     height: 20px;
 }
@@ -1023,13 +1025,13 @@ canvas#editorCanvas {
 }
 
 /* add bottom sheet */
-/* Bottom Sheet */
+/*
 .bottom-sheet {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: -300px; /* hidden */
-  background: #fff;
+  bottom: -300px; /* hidden 
+  background-color: rgba(0, 0, 0, 0.5);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
   transition: bottom 0.3s ease;
@@ -1038,18 +1040,19 @@ canvas#editorCanvas {
 }
 
 .bottom-sheet.active {
-  bottom: 0; /* show */
-}
+  bottom: 0; /* show 
+}*/
 
 .sheet-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin-bottom: 12px;
 }
 
 .sheet-title {
   font-weight: bold;
+  color: white;
 }
 
 .close-btn {
@@ -1057,6 +1060,7 @@ canvas#editorCanvas {
   border: none;
   font-size: 18px;
   cursor: pointer;
+  color: white;
 }
 
 .sheet-content {
@@ -1076,3 +1080,78 @@ canvas#editorCanvas {
 .hidden {
       display: none;
 }
+
+/* bottom sheet grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 16px;
+    }
+
+    .item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f3f3f3;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .item:hover {
+      background: #e0e0e0;
+    }
+
+    .item img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      margin-bottom: 8px;
+    }
+
+    .item button {
+      border: none;
+      background: #007bff;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .item button:hover {
+      background: #0056b3;
+    }
+    /* Bottom sheet */
+    .bottom-sheet {
+      background-color: rgba(0, 0, 0, 0.5);
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-height: 70%;
+      border-radius: 16px 16px 0 0;
+      padding: 16px;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    .bottom-sheet.active {
+      transform: translateY(0);
+    }
+    /* Overlay */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    .overlay.active {
+      display: flex;
+    }
+
+    .bottom-sheet.active {
+      transform: translateY(0);
+    }
