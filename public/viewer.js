@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { MindARThree } from 'mindar-face-three';
-import { createFFmpeg, fetchFile } from 'ffmpeg';
+import { MindARThree } from 'mindar-face-three'; 
 // AR Viewer with in-AR sticker editing via direct tap and overlay handles
 (async function(){
   const qs = new URLSearchParams(location.search);
@@ -34,8 +33,8 @@ import { createFFmpeg, fetchFile } from 'ffmpeg';
   let recordingCanvas; // Kanvas untuk menggabungkan video dan AR
   let recordingCtx;
   let videoRecordLoop; // Loop untuk menggambar video selama perekaman
-  let ffmpeg = null;
-  let ffmpegLoaded = false;
+  // let ffmpeg = null;
+  // let ffmpegLoaded = false;
   
   // ** NEW: Variabel untuk menyimpan data pratinjau saat ini **
   let currentPreviewUrl = null;
@@ -376,37 +375,33 @@ import { createFFmpeg, fetchFile } from 'ffmpeg';
     startCountdown();
   }
 
-async function loadFFmpeg() {
-    if (ffmpegLoaded) return;
+// async function loadFFmpeg() {
+//     if (ffmpegLoaded) return;
     
-    // Pastikan FFmpeg tersedia di window sebelum mencoba menggunakannya
-    // if (!window.FFmpeg) {
-    //     console.error('Perpustakaan FFmpeg tidak tersedia.');
-    //     showLoader('Gagal memuat konverter. Coba muat ulang halaman.');
-    //     return;
-    // }
+//     // Pastikan FFmpeg tersedia di window sebelum mencoba menggunakannya
+//     // if (!window.FFmpeg) {
+//     //     console.error('Perpustakaan FFmpeg tidak tersedia.');
+//     //     showLoader('Gagal memuat konverter. Coba muat ulang halaman.');
+//     //     return;
+//     // }
    
-       showLoader('Memuat konverter...');
+//     showLoader('Memuat konverter...');
 
-    // Hapus semua logika pengecekan timing/global
-    
-    try {
-        // Gunakan createFFmpeg() yang diimpor dari atas
-        ffmpeg = createFFmpeg({
-            // Core path juga harus menggunakan UNPKG, dan UMD yang benar (karena FFmpeg 0.12.7 memaksa UMD core)
-            corePath: 'https://unpkg.com/@ffmpeg/core@0.12.7/dist/umd/ffmpeg-core.js', 
-            log: true,
-        });
-        
-        await ffmpeg.load();
-        ffmpegLoaded = true;
-        showLoader('Konverter dimuat. Siap!');
+//     try {
+//         ffmpeg = createFFmpeg({
+//              corePath: '/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js', 
+//             log: true,
+//         });
 
-    } catch (error) {
-        console.error('Gagal memuat FFmpeg Core:', error);
-        showLoader('Gagal memuat konverter. Error teknis: ' + error.message);
-    }
-}
+//         await ffmpeg.load();
+//         ffmpegLoaded = true;
+//         showLoader('Konverter dimuat. Siap!');
+
+//     } catch (error) {
+//         console.error('Gagal memuat FFmpeg Core dari npm:', error);
+//         showLoader('Gagal memuat konverter. Error teknis: ' + error.message);
+//     }
+// }
 
 function showLoader(message = 'Mengonversi video...') {
     // Ambil elemen dari DOM di dalam fungsi
@@ -483,31 +478,26 @@ async function stopVideoRecording() {
 
     console.log('Video recording stopped. Starting conversion...');
 
-    try {
-        await loadFFmpeg();
-    } catch (e) {
-        console.error("Gagal memuat FFmpeg sebelum konversi:", e);
-        showLoader('Konversi gagal: FFmpeg tidak termuat.');
-        hideLoader();
-        return; // Hentikan fungsi jika load gagal
-    }
-    // ==========================================================
-    
-    try {
-        const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-        const inputFilename = 'input.webm';
+     try {
+        const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+        
+        // --- PANGGILAN API BARU DIMULAI ---
+        const response = await fetch('/api/convert', {
+            method: 'POST',
+            // Kirim Blob video (WebM) ke server
+            body: videoBlob, 
+            headers: {
+                // Sangat penting untuk memberi tahu server jenis data yang dikirim
+                'Content-Type': mediaRecorder.mimeType || 'video/webm'
+            }
+        });
 
-        // BARIS BERIKUTNYA MENGGUNAKAN ffmpeg.FS dan fetchFile
-        // Baris ini sekarang aman karena Anda sudah menunggu loadFFmpeg() di atas.
-        await ffmpeg.FS('writeFile', inputFilename, await fetchFile(superBuffer)); 
+        if (!response.ok) {
+            throw new Error(`Konversi API gagal: ${response.status} ${response.statusText}`);
+        }
 
-        // Jalankan perintah konversi
-        const outputFilename = 'output.mp4';
-        await ffmpeg.run('-i', inputFilename, '-c:v', 'libx264', '-crf', '23', '-preset', 'fast', '-c:a', 'aac', '-b:a', '128k', outputFilename);
-
-        // Baca kembali file yang sudah dikonversi
-        const data = ffmpeg.FS('readFile', outputFilename);
-        const convertedBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        // Dapatkan MP4 Blob yang dikembalikan oleh Serverless Function
+        const convertedBlob = await response.blob(); 
         const videoURL = URL.createObjectURL(convertedBlob);
 
         // Tampilkan pratinjau dengan video MP4 yang sudah dikonversi
@@ -517,7 +507,7 @@ async function stopVideoRecording() {
         console.error('Video conversion failed:', error);
         if (statusEl) statusEl.textContent = 'Konversi video gagal. Memuat pratinjau asli.';
 
-        // Fallback ke video asli jika konversi gagal
+        // Fallback ke video asli jika konversi API gagal
         const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
         const videoURL = window.URL.createObjectURL(superBuffer);
         showPreview(videoURL, 'video');
@@ -525,11 +515,8 @@ async function stopVideoRecording() {
     } finally {
         // Sembunyikan loader
         hideLoader();
-        // Bersihkan data dari memori FFmpeg
-        try { ffmpeg.FS('unlink', 'input.webm'); } catch (_) {}
-        try { ffmpeg.FS('unlink', 'output.mp4'); } catch (_) {}
+        // Hapus kode pembersihan FFmpeg.FS()
     }
-
     // // Kembalikan loop animasi MindAR setelah selesai
     // if (renderer && renderer.setAnimationLoop) {
     //     renderer.setAnimationLoop(() => {
@@ -714,7 +701,7 @@ function hidePreview() {
       if (isRecording) {
         stopVideoRecording();
       } else {
-        await loadFFmpeg(); // Pastikan FFmpeg dimuat sebelum memulai perekaman
+        // await loadFFmpeg(); // Pastikan FFmpeg dimuat sebelum memulai perekaman
         startVideoRecording();
       }
     }
