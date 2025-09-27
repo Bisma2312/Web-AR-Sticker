@@ -479,21 +479,22 @@ async function stopVideoRecording() {
     console.log('Video recording stopped. Starting conversion...');
 
      try {
-       const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-        
-        const response = await fetch('/api/convert', {
-            method: 'POST',
-            body: videoBlob, 
-            headers: {
-                // KRUSIAL: Ini memberi tahu Vercel cara membaca data
-                'Content-Type': mediaRecorder.mimeType || 'video/webm' 
-            }
-        });
+        const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+        
+        // --- PERBAIKAN KRUSIAL: GUNAKAN FORM DATA ---
+        const formData = new FormData();
+        // Beri nama file sebagai 'video' (Wajib, harus sesuai dengan Multer di backend)
+        formData.append('video', videoBlob, 'input.webm'); 
 
-        if (!response.ok) {
-            throw new Error(`Konversi API gagal: ${response.status} ${response.statusText}`);
-        }
+        const response = await fetch('/api/convert', {
+            method: 'POST',
+            body: formData, // Kirim FormData
+            // PENTING: HAPUS HEADER 'Content-Type'. Biarkan browser mengaturnya sebagai multipart/form-data.
+        });
 
+        if (!response.ok) {
+            throw new Error(`Konversi API gagal: ${response.status} ${response.statusText}`);
+        }
         // Dapatkan MP4 Blob yang dikembalikan oleh Serverless Function
         const convertedBlob = await response.blob(); 
         const videoURL = URL.createObjectURL(convertedBlob);
