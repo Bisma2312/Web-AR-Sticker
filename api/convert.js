@@ -3,7 +3,8 @@ const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
-const { createClient } = require('@supabase/supabase-js');
+// axios tidak diperlukan lagi karena kita menggunakan .download() Supabase
+const { createClient } = require('@supabase/supabase-js'); 
 
 // ----------------------------------------------------------------------
 // 1. INISIALISASI SUPABASE & KONFIGURASI
@@ -22,11 +23,11 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false }, // Penting di lingkungan serverless
 });
 
-// Konfigurasi Vercel
+// Konfigurasi Vercel (Tingkatkan memori dan durasi untuk keamanan)
 // PERBAIKAN STABILITAS BUILD: Menggunakan module.exports.config (CommonJS)
 module.exports.config = {
-  memory: 3008, // Tingkatkan memori untuk video besar
-  maxDuration: 180, // Tingkatkan durasi maksimal ke 180 detik (3 menit)
+  memory: 3008, // Naikkan memori
+  maxDuration: 180, // Naikkan durasi (3 menit)
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -51,6 +52,7 @@ module.exports = async (req, res) => {
 
     const tempDir = os.tmpdir();
     let inputPath, outputPath;
+    // Hanya membersihkan file input yang diupload dari frontend
     let filesToCleanup = []; 
 
     try {
@@ -78,7 +80,7 @@ module.exports = async (req, res) => {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // PERBAIKAN BLOB: Konversi Blob/ArrayBuffer dari Supabase menjadi Buffer Node.js
+        // Konversi Blob/ArrayBuffer dari Supabase menjadi Buffer Node.js
         const arrayBuffer = await downloadData.arrayBuffer();
         const videoBuffer = Buffer.from(arrayBuffer); 
         
@@ -90,17 +92,17 @@ module.exports = async (req, res) => {
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // PERBAIKAN KRITIS UNTUK FILE RUSAK/TIDAK VALID
+                // KODE KEMENANGAN: PERBAIKAN KRITIS UNTUK FILE RUSAK/TIDAK VALID
                 .inputOptions([
                     '-probesize 50M', 
                     '-analyzeduration 50M',
-                    '-fflags +genpts', // Flag kuat: Meregenerasi presentation timestamps
-                    '-strict -2'       // Flag kuat: Mode toleran/eksperimental untuk codec
+                    '-fflags +genpts', // Memperbaiki presentation timestamps yang hilang
+                    '-strict -2'       // Mode toleran/eksperimental
                 ])
                 .videoCodec('libx264')
                 .outputOptions([
-                    '-preset ultrafast', 
-                    '-crf 28', 
+                    '-preset ultrafast', // Opsi kecepatan konversi
+                    '-crf 28',           // Kualitas video (lebih tinggi = lebih kecil/buruk)
                     '-c:a aac',
                     '-b:a 128k',
                     '-movflags +faststart'
