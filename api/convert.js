@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Konfigurasi Vercel
-// Menggunakan module.exports.config untuk CommonJS
+// PERBAIKAN STABILITAS BUILD: Menggunakan module.exports.config (CommonJS)
 module.exports.config = {
   memory: 3008, // Tingkatkan memori untuk video besar
   maxDuration: 180, // Tingkatkan durasi maksimal ke 180 detik (3 menit)
@@ -78,7 +78,7 @@ module.exports = async (req, res) => {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // Perbaikan BLOB: Konversi Blob (atau ArrayBuffer) menjadi Buffer
+        // PERBAIKAN BLOB: Konversi Blob/ArrayBuffer dari Supabase menjadi Buffer Node.js
         const arrayBuffer = await downloadData.arrayBuffer();
         const videoBuffer = Buffer.from(arrayBuffer); 
         
@@ -90,12 +90,12 @@ module.exports = async (req, res) => {
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // PERBAIKAN KRITIS: Menambahkan flag toleransi input
+                // PERBAIKAN KRITIS UNTUK FILE RUSAK/TIDAK VALID
                 .inputOptions([
                     '-probesize 50M', 
                     '-analyzeduration 50M',
-                    '-fflags +genpts', // <-- Flag kuat untuk meregenerasi timestamp
-                    '-strict -2'       // <-- Flag kuat untuk codec eksperimental
+                    '-fflags +genpts', // Flag kuat: Meregenerasi presentation timestamps
+                    '-strict -2'       // Flag kuat: Mode toleran/eksperimental untuk codec
                 ])
                 .videoCodec('libx264')
                 .outputOptions([
@@ -110,7 +110,6 @@ module.exports = async (req, res) => {
                     resolve();
                 })
                 .on('error', (err) => {
-                    // Menyertakan pesan error ffmpeg lengkap untuk debugging
                     console.error('FFmpeg Error:', err.message);
                     reject(new Error(`Konversi gagal: ${err.message}`));
                 })
@@ -145,12 +144,10 @@ module.exports = async (req, res) => {
         res.status(500).json({ message: `Internal Server Error: ${error.message}` });
     } finally {
         // 6. Bersihkan File Temporer Lokal dan Supabase
-        // Membersihkan file di disk Vercel
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer Vercel telah dibersihkan.');
         
-        // Membersihkan file di Supabase
         await cleanupSupabase(filesToCleanup); 
     }
 };
