@@ -1,10 +1,9 @@
-
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
-const axios = require('axios'); // Untuk mengunduh file dari URL Supabase
+const axios = require('axios'); // Masih dibutuhkan jika ingin menggunakan headers atau fitur axios lainnya, namun fungsi download utama diganti.
 const { createClient } = require('@supabase/supabase-js'); // Untuk upload & cleanup
 
 // Inisialisasi Supabase client (menggunakan SERVICE ROLE KEY untuk izin penuh)
@@ -21,9 +20,12 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Konfigurasi Vercel
-module.exports.config = { // <-- Ini adalah sintaks CJS
+// PERBAIKAN 1: Mengubah dari sintaks 'export const' (ESM) menjadi 'module.exports.config' (CommonJS) 
+// untuk menghindari warning Vercel yang merusak build dependencies.
+module.exports.config = {
   memory: 1024, 
   maxDuration: 60, 
+  // Kita kembali ke JSON default
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -62,19 +64,25 @@ module.exports = async (req, res) => {
         inputPath = path.join(tempDir, `input_${path.basename(inputFileName)}`);
         outputPath = path.join(tempDir, `output_${path.basename(outputFileName)}`);
         
-        const fileWriter = fs.createWriteStream(inputPath);
-        const response = await axios({
-            method: 'get',
-            url: inputUrl,
-            responseType: 'stream',
-        });
         
-        await new Promise((resolve, reject) => {
-            response.data.pipe(fileWriter);
-            response.data.on('error', reject);
-            fileWriter.on('finish', resolve);
-            fileWriter.on('error', reject);
-        });
+        // ----------------------------------------------------------------
+        // PERBAIKAN 2: Menggunakan supabase.storage.download() yang terautentikasi 
+        // untuk menghindari error 400 dari public URL/RLS.
+        // ----------------------------------------------------------------
+
+        // Gunakan inputFileName (e.g., 'input/1234567.webm')
+        const { data: downloadData, error: downloadError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .download(inputFileName); // Menggunakan nama file di bucket, BUKAN URL publik
+
+        if (downloadError) {
+             throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
+        }
+        
+        // Simpan Buffer hasil download ke file lokal
+        // downloadData adalah Blob, kita konversi ke Buffer untuk fs.writeFileSync
+        fs.writeFileSync(inputPath, Buffer.from(downloadData)); 
+
         console.log(`File input sementara di Vercel dibuat: ${inputPath}`);
 
         // 2. Jalankan Konversi
@@ -132,7 +140,6 @@ module.exports = async (req, res) => {
         console.log('File temporer Vercel telah dibersihkan.');
         
         // Membersihkan file di Supabase
-        // Hapus file input WAJIB, file output (outputFileName) bersifat opsional tergantung kebutuhan
         await cleanupSupabase(filesToCleanup); 
     }
 };
