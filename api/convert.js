@@ -3,7 +3,6 @@ const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
-const axios = require('axios'); // Metode download yang lebih tua
 const { createClient } = require('@supabase/supabase-js'); 
 
 // ----------------------------------------------------------------------
@@ -22,15 +21,13 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false }, 
 });
 
-// Konfigurasi Vercel (Nilai yang lebih rendah dan format export yang berbeda)
-export const config = {
-  memory: 1024, // Lebih rendah dari versi sukses
-  maxDuration: 60, // Lebih rendah dari versi sukses
+module.exports.config = {
+  memory: 3008, 
+  maxDuration: 180, 
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
-// Fungsi utilitas untuk membersihkan file di bucket Supabase
 const cleanupSupabase = async (filePaths) => {
     if (filePaths && filePaths.length > 0) {
         const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
@@ -43,7 +40,7 @@ const cleanupSupabase = async (filePaths) => {
 // 2. HANDLER UTAMA
 // ----------------------------------------------------------------------
 
-export default async (req, res) => { // Menggunakan export default
+module.exports = async (req, res) => {
     if (req.method !== 'POST') {
         return res.status(405).send('Method Not Allowed');
     }
@@ -66,32 +63,34 @@ export default async (req, res) => { // Menggunakan export default
         outputPath = path.join(tempDir, `output_${path.basename(outputFileName)}`);
         
         
-        // 1. UNDUH File Video (Metode menggunakan Axios yang kurang aman)
-        const response = await axios({
-            url: inputUrl, // Menggunakan Public URL yang tidak autentik
-            method: 'GET',
-            responseType: 'stream',
-        });
-        
-        const writer = fs.createWriteStream(inputPath);
-        response.data.pipe(writer);
+        // 1. UNDUH File Video (Metode Stabil)
+        const { data: downloadData, error: downloadError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .download(inputFileName); 
 
-        await new Promise((resolve, reject) => {
-            writer.on('finish', resolve);
-            writer.on('error', reject);
-        });
+        if (downloadError) {
+             throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
+        }
+        
+        const arrayBuffer = await downloadData.arrayBuffer();
+        const videoBuffer = Buffer.from(arrayBuffer); 
+        fs.writeFileSync(inputPath, videoBuffer); 
+
         console.log(`File input sementara di Vercel dibuat: ${inputPath}`);
 
-        // 2. Jalankan Konversi FFmpeg
+        // 2. Jalankan Konversi FFmpeg (Toleransi Penuh)
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // BLOK INI KOSONG ATAU HANYA MEMILIKI FLAG DASAR
-                // Menyebabkan kegagalan "Invalid data found"
-                // .inputOptions([]) // Tidak ada flag toleransi yang kuat
+                .inputOptions([
+                    '-probesize 50M', 
+                    '-analyzeduration 50M',
+                    '-fflags +genpts', 
+                    '-strict -2'       
+                ])
                 .videoCodec('libx264')
                 .outputOptions([
                     '-preset ultrafast', 
-                    '-crf 28', 
+                    '-crf 28',           
                     '-c:a aac',
                     '-b:a 128k',
                     '-movflags +faststart'
@@ -109,7 +108,6 @@ export default async (req, res) => { // Menggunakan export default
 
         // 3. UPLOAD File MP4
         const outputBuffer = fs.readFileSync(outputPath);
-
         const { error: uploadOutputError } = await supabase.storage
             .from(BUCKET_NAME)
             .upload(outputFileName, outputBuffer, {
@@ -134,7 +132,7 @@ export default async (req, res) => { // Menggunakan export default
         console.error('Server Error (500) Supabase Flow:', error.message);
         res.status(500).json({ message: `Internal Server Error: ${error.message}` });
     } finally {
-        // 6. Bersihkan File Temporer Lokal dan Supabase
+        // 6. Bersihkan
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer Vercel telah dibersihkan.');
