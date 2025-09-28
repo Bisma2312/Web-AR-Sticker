@@ -3,13 +3,13 @@ const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
+const axios = require('axios'); // Metode download yang lebih tua
 const { createClient } = require('@supabase/supabase-js'); 
 
 // ----------------------------------------------------------------------
 // 1. INISIALISASI SUPABASE & KONFIGURASI
 // ----------------------------------------------------------------------
 
-// Inisialisasi Supabase client (menggunakan SERVICE ROLE KEY)
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
 const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'videos'; 
@@ -22,10 +22,10 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false }, 
 });
 
-// Konfigurasi Vercel (Penting untuk CommonJS di Vercel)
-module.exports.config = {
-  memory: 3008, 
-  maxDuration: 180, 
+// Konfigurasi Vercel (Nilai yang lebih rendah dan format export yang berbeda)
+export const config = {
+  memory: 1024, // Lebih rendah dari versi sukses
+  maxDuration: 60, // Lebih rendah dari versi sukses
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -43,7 +43,7 @@ const cleanupSupabase = async (filePaths) => {
 // 2. HANDLER UTAMA
 // ----------------------------------------------------------------------
 
-module.exports = async (req, res) => {
+export default async (req, res) => { // Menggunakan export default
     if (req.method !== 'POST') {
         return res.status(405).send('Method Not Allowed');
     }
@@ -66,36 +66,32 @@ module.exports = async (req, res) => {
         outputPath = path.join(tempDir, `output_${path.basename(outputFileName)}`);
         
         
-        // 1. UNDUH File Video dari Supabase
-        const { data: downloadData, error: downloadError } = await supabase.storage
-            .from(BUCKET_NAME)
-            .download(inputFileName); 
-
-        if (downloadError) {
-             throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
-        }
+        // 1. UNDUH File Video (Metode menggunakan Axios yang kurang aman)
+        const response = await axios({
+            url: inputUrl, // Menggunakan Public URL yang tidak autentik
+            method: 'GET',
+            responseType: 'stream',
+        });
         
-        // Konversi ArrayBuffer ke Buffer
-        const arrayBuffer = await downloadData.arrayBuffer();
-        const videoBuffer = Buffer.from(arrayBuffer); 
-        fs.writeFileSync(inputPath, videoBuffer); 
+        const writer = fs.createWriteStream(inputPath);
+        response.data.pipe(writer);
 
+        await new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+        });
         console.log(`File input sementara di Vercel dibuat: ${inputPath}`);
 
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // KODE KEMENANGAN (Memperbaiki Invalid Data Found)
-                .inputOptions([
-                    '-probesize 50M', 
-                    '-analyzeduration 50M',
-                    '-fflags +genpts', 
-                    '-strict -2'       
-                ])
+                // BLOK INI KOSONG ATAU HANYA MEMILIKI FLAG DASAR
+                // Menyebabkan kegagalan "Invalid data found"
+                // .inputOptions([]) // Tidak ada flag toleransi yang kuat
                 .videoCodec('libx264')
                 .outputOptions([
                     '-preset ultrafast', 
-                    '-crf 28',           
+                    '-crf 28', 
                     '-c:a aac',
                     '-b:a 128k',
                     '-movflags +faststart'
@@ -106,7 +102,6 @@ module.exports = async (req, res) => {
                 })
                 .on('error', (err) => {
                     console.error('FFmpeg Error:', err.message);
-                    // Ini adalah pesan error yang muncul di log Anda jika gagal:
                     reject(new Error(`Konversi gagal: ${err.message}`));
                 })
                 .save(outputPath);
