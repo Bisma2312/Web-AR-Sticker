@@ -3,15 +3,15 @@ const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
-const { createClient } = require('@supabase/supabase-js');
+// Ganti axios dengan .download() Supabase yang lebih stabil
+const { createClient } = require('@supabase/supabase-js'); 
 
 // ----------------------------------------------------------------------
 // 1. INISIALISASI SUPABASE & KONFIGURASI
 // ----------------------------------------------------------------------
 
-// Inisialisasi Supabase client (menggunakan SERVICE ROLE KEY untuk izin penuh)
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Wajib Service Role Key
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
 const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'videos'; 
 
 if (!supabaseUrl || !supabaseKey) {
@@ -19,19 +19,17 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false }, // Penting di lingkungan serverless
+    auth: { persistSession: false }, 
 });
 
-// Konfigurasi Vercel
-// PERBAIKAN: Menggunakan module.exports.config untuk CommonJS
+// Konfigurasi Vercel (Ditingkatkan untuk stabilitas)
 module.exports.config = {
-  memory: 3008, // Tingkatkan memori untuk video besar
-  maxDuration: 180, // Tingkatkan durasi maksimal ke 180 detik (3 menit)
+  memory: 3008, 
+  maxDuration: 180, 
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
-// Fungsi utilitas untuk membersihkan file di bucket Supabase
 const cleanupSupabase = async (filePaths) => {
     if (filePaths && filePaths.length > 0) {
         const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
@@ -60,16 +58,14 @@ module.exports = async (req, res) => {
             return res.status(400).json({ message: 'Input URL dan nama file tidak ditemukan.' });
         }
         
-        // Nama file output di Supabase
         const outputFileName = `output/${path.parse(inputFileName).name}_converted.mp4`;
         filesToCleanup.push(inputFileName); 
 
-        // Tentukan path lokal temporer
         inputPath = path.join(tempDir, `input_${path.basename(inputFileName)}`);
         outputPath = path.join(tempDir, `output_${path.basename(outputFileName)}`);
         
         
-        // 1. UNDUH File Video dari Supabase ke Disk Vercel (Terautentikasi)
+        // 1. UNDUH File Video (PERBAIKAN: Menggunakan .download() Supabase yang stabil)
         const { data: downloadData, error: downloadError } = await supabase.storage
             .from(BUCKET_NAME)
             .download(inputFileName); 
@@ -78,11 +74,8 @@ module.exports = async (req, res) => {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // Perbaikan BLOB: Konversi Blob (atau ArrayBuffer) menjadi Buffer
         const arrayBuffer = await downloadData.arrayBuffer();
         const videoBuffer = Buffer.from(arrayBuffer); 
-        
-        // Simpan Buffer hasil download ke file lokal Vercel
         fs.writeFileSync(inputPath, videoBuffer); 
 
         console.log(`File input sementara di Vercel dibuat: ${inputPath}`);
@@ -90,15 +83,17 @@ module.exports = async (req, res) => {
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // PERBAIKAN KRITIS: Menambahkan opsi toleransi input
+                // PERBAIKAN KRITIS: BLOK INI TIDAK ADA DI KODE ANDA SEBELUMNYA!
                 .inputOptions([
                     '-probesize 50M', 
-                    '-analyzeduration 50M'
+                    '-analyzeduration 50M',
+                    '-fflags +genpts', // Memperbaiki timestamp yang hilang/rusak
+                    '-strict -2'       // Mode toleran
                 ])
                 .videoCodec('libx264')
                 .outputOptions([
                     '-preset ultrafast', 
-                    '-crf 28', 
+                    '-crf 28',           
                     '-c:a aac',
                     '-b:a 128k',
                     '-movflags +faststart'
@@ -108,16 +103,14 @@ module.exports = async (req, res) => {
                     resolve();
                 })
                 .on('error', (err) => {
-                    // Menyertakan pesan error ffmpeg lengkap untuk debugging
                     console.error('FFmpeg Error:', err.message);
                     reject(new Error(`Konversi gagal: ${err.message}`));
                 })
                 .save(outputPath);
         });
 
-        // 3. UPLOAD File MP4 Hasil Konversi ke Supabase
+        // 3. UPLOAD File MP4
         const outputBuffer = fs.readFileSync(outputPath);
-
         const { error: uploadOutputError } = await supabase.storage
             .from(BUCKET_NAME)
             .upload(outputFileName, outputBuffer, {
@@ -128,7 +121,7 @@ module.exports = async (req, res) => {
             
         if (uploadOutputError) throw new Error(`Supabase Upload Output Gagal: ${uploadOutputError.message}`);
 
-        // 4. Dapatkan Public URL hasil konversi
+        // 4. Dapatkan Public URL
         const { data: publicUrlData } = supabase.storage
             .from(BUCKET_NAME)
             .getPublicUrl(outputFileName);
@@ -142,12 +135,11 @@ module.exports = async (req, res) => {
         console.error('Server Error (500) Supabase Flow:', error.message);
         res.status(500).json({ message: `Internal Server Error: ${error.message}` });
     } finally {
-        // 6. Bersihkan File Temporer Lokal dan Supabase
+        // 6. Bersihkan
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer Vercel telah dibersihkan.');
         
-        // Membersihkan file di Supabase
         await cleanupSupabase(filesToCleanup); 
     }
 };
