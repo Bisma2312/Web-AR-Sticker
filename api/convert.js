@@ -3,12 +3,15 @@ const path = require('path');
 const os = require('os');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
-const axios = require('axios'); // Masih dibutuhkan jika ingin menggunakan headers atau fitur axios lainnya, namun fungsi download utama diganti.
-const { createClient } = require('@supabase/supabase-js'); // Untuk upload & cleanup
+const { createClient } = require('@supabase/supabase-js');
+
+// ----------------------------------------------------------------------
+// 1. INISIALISASI SUPABASE & KONFIGURASI
+// ----------------------------------------------------------------------
 
 // Inisialisasi Supabase client (menggunakan SERVICE ROLE KEY untuk izin penuh)
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Gunakan Service Role Key
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Wajib Service Role Key
 const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'videos'; 
 
 if (!supabaseUrl || !supabaseKey) {
@@ -20,17 +23,15 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Konfigurasi Vercel
-// PERBAIKAN 1: Mengubah dari sintaks 'export const' (ESM) menjadi 'module.exports.config' (CommonJS) 
-// untuk menghindari warning Vercel yang merusak build dependencies.
+// PERBAIKAN CJS/ESM: Menggunakan module.exports.config untuk stabilitas build
 module.exports.config = {
-  memory: 1024, 
-  maxDuration: 60, 
-  // Kita kembali ke JSON default
+  memory: 3008, // Tingkatkan memori untuk video besar
+  maxDuration: 180, // Tingkatkan durasi maksimal ke 180 detik (3 menit)
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
-// Fungsi untuk membersihkan file di bucket Supabase
+// Fungsi utilitas untuk membersihkan file di bucket Supabase
 const cleanupSupabase = async (filePaths) => {
     if (filePaths && filePaths.length > 0) {
         const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
@@ -39,6 +40,9 @@ const cleanupSupabase = async (filePaths) => {
     }
 };
 
+// ----------------------------------------------------------------------
+// 2. HANDLER UTAMA
+// ----------------------------------------------------------------------
 
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
@@ -60,17 +64,12 @@ module.exports = async (req, res) => {
         const outputFileName = `output/${path.parse(inputFileName).name}_converted.mp4`;
         filesToCleanup.push(inputFileName); // Tambahkan input untuk dibersihkan nanti
 
-        // 1. UNDUH File Video dari Supabase ke Disk Vercel
+        // Tentukan path lokal temporer
         inputPath = path.join(tempDir, `input_${path.basename(inputFileName)}`);
         outputPath = path.join(tempDir, `output_${path.basename(outputFileName)}`);
         
         
-        // ----------------------------------------------------------------
-        // PERBAIKAN 2: Menggunakan supabase.storage.download() yang terautentikasi 
-        // untuk menghindari error 400 dari public URL/RLS.
-        // ----------------------------------------------------------------
-
-        // Gunakan inputFileName (e.g., 'input/1234567.webm')
+        // 1. UNDUH File Video dari Supabase ke Disk Vercel (Terautentikasi)
         const { data: downloadData, error: downloadError } = await supabase.storage
             .from(BUCKET_NAME)
             .download(inputFileName); // Menggunakan nama file di bucket, BUKAN URL publik
@@ -79,13 +78,15 @@ module.exports = async (req, res) => {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // Simpan Buffer hasil download ke file lokal
-        // downloadData adalah Blob, kita konversi ke Buffer untuk fs.writeFileSync
-        fs.writeFileSync(inputPath, Buffer.from(downloadData)); 
+        // PERBAIKAN BUFFER: Mengubah ArrayBuffer yang diterima dari Supabase menjadi Buffer
+        const videoBuffer = Buffer.from(downloadData); 
+        
+        // Simpan Buffer hasil download ke file lokal Vercel
+        fs.writeFileSync(inputPath, videoBuffer); 
 
         console.log(`File input sementara di Vercel dibuat: ${inputPath}`);
 
-        // 2. Jalankan Konversi
+        // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
                 .videoCodec('libx264')
