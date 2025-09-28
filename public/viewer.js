@@ -288,12 +288,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     });
   }
   
-  function startVideoRecording() {
-    // 1. Validasi
+ function startVideoRecording() {
+    // 1. Validasi Awal
     if (isRecording) return;
     
-    // 2. Disable Tombol Rekam (Fix #2)
-    const recordButton = document.getElementById('recordButton');
+    // Inisialisasi mediaRecorder ke null
+    let mediaRecorder = null; 
+
+    // 2. Disable Tombol Rekam
+    const recordButton = document.getElementById('captureBtn'); // Asumsi ID tombol
     const stopButton = document.getElementById('stopButton'); // Jika ada tombol stop terpisah
     
     if (recordButton) {
@@ -301,19 +304,80 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         recordButton.classList.add('disabled');
     }
     if (stopButton) {
-        stopButton.disabled = true; // Nonaktifkan juga tombol stop
+        stopButton.disabled = true;
         stopButton.classList.add('disabled');
     }
-    
-    // 3. Hentikan animasi loop utama MindAR/Three.js
+
+    // 3. Hentikan loop utama MindAR
     if (renderer && renderer.setAnimationLoop) {
       renderer.setAnimationLoop(null); 
     }
     
-    // ... (Kode inisialisasi recordingCanvas, stream, mediaRecorder, drawFrame, dll. dari jawaban sebelumnya) ...
-    // Pastikan kode di dalam drawFrame masih memiliki renderer.render(scene, camera);
+    // 4. Inisialisasi Canvas
+    if (!recordingCanvas) {
+        recordingCanvas = document.createElement('canvas');
+        recordingCanvas.width = renderer.domElement.width;
+        recordingCanvas.height = renderer.domElement.height;
+    }
+    recordingCtx = recordingCanvas.getContext('2d');
+    
+    // Ambil stream dari canvas
+    const stream = recordingCanvas.captureStream(30);
+    recordedBlobs = [];
+    
+    // 5. MIME Type & MediaRecorder Setup
+    let mimeType = 'video/webm; codecs=vp8'; 
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm; codecs=vp9';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/webm'; 
+        }
+    }
+
+    try {
+        // COBA BUAT MEDIA RECORDER
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+    } catch (e) {
+        console.error('Exception saat membuat MediaRecorder:', e);
+        if (statusEl) statusEl.textContent = `Perekaman gagal: ${e.name}`;
+        
+        // ** PERBAIKAN: CLEANUP DAN EXIT (RETURN) JIKA GAGAL **
+        if (recordButton) {
+            recordButton.disabled = false;
+            recordButton.classList.remove('disabled');
+        }
+        if (stopButton) {
+            stopButton.disabled = false;
+            stopButton.classList.remove('disabled');
+        }
+        if (renderer && renderer.setAnimationLoop) {
+            renderer.setAnimationLoop(null);
+        }
+        return; // <--- KUNCI! Mencegah eksekusi lanjut ke mediaRecorder.start()
+    }
+    
+    // 6. ondataavailable
+    mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+            recordedBlobs.push(event.data);
+        }
+    };
+    
+    // 7. Loop Perekaman Kustom (Fix AR Freeze)
+    function drawFrame() {
+        if (renderer.domElement && recordingCtx) {
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera); 
+            }
+            recordingCtx.drawImage(renderer.domElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
+        }
+        if (isRecording) {
+            videoRecordLoop = requestAnimationFrame(drawFrame);
+        }
+    }
     
     // 8. Mulai Perekaman
+    // Pada titik ini, kita yakin mediaRecorder telah didefinisikan (berkat try/catch dan return)
     mediaRecorder.start();
     videoRecordLoop = requestAnimationFrame(drawFrame); 
     
