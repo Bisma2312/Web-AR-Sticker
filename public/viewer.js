@@ -328,13 +328,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         return;
     }
     
-   mediaRecorder.onstop = async () => {
-    // Gabungkan data video (chunks)
-    const blob = new Blob(recordedChunks, {
-        // PASTIKAN MIME TYPE INI EKSPLISIT
-        type: 'video/webm;codecs=vp8', 
-        // Atau 'video/webm;codecs=vp9' atau 'video/webm;codecs=h264' tergantung dukungan browser Anda
-    });
+    mediaRecorder.onstop = (event) => {
+      console.log('Recorder stopped, starting processing.', event);
+      
+      const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
       
       // PENTING: Panggil fungsi baru untuk upload dan konversi di sini.
       handleFinalProcessing(superBuffer, mediaRecorder.mimeType);
