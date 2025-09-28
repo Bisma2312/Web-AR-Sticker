@@ -303,7 +303,7 @@ import { MindARThree } from 'mindar-face-three';
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    let mimeType = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+    let mimeType = 'video/mp4; codecs="avc1.424028, mp4a.40.2"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
         console.warn('Perekaman MP4 tidak didukung. Beralih ke WebM.');
         mimeType = 'video/webm; codecs=vp9';
