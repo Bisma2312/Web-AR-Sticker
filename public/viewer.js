@@ -288,56 +288,58 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     });
   }
   
-function startVideoRecording() {
-    // Pastikan tidak ada perekaman yang sedang berjalan
-    if (isRecording) return;
+  function startVideoRecording() {
     
-    // Hentikan animasi loop utama MindAR/Three.js
-    // Kita mengambil alih rendering untuk merekam frame secara sinkron
-    if (renderer && renderer.setAnimationLoop) {
-      renderer.setAnimationLoop(null); 
+    if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video || isRecording) return;
+    
+    if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
+
+    const camBtn = document.getElementById('cam-btn');
+    if (camBtn) {
+        camBtn.disabled = true; // **NONAKTIFKAN TOMBOL SAAT MEREKAM**
     }
-    
-    // Inisialisasi canvas untuk perekaman video
-    if (!recordingCanvas) {
-        recordingCanvas = document.createElement('canvas');
-        recordingCanvas.width = renderer.domElement.width;
-        recordingCanvas.height = renderer.domElement.height;
+
+    if (photoToggleBtn) {
+        photoToggleBtn.disabled = true; // **NONAKTIFKAN TOMBOL PHOTO MODE**
     }
-    
+
+    overlay.style.display = 'none';
+
+    recordingCanvas = document.createElement('canvas');
+    recordingCanvas.width = mindarThree.renderer.domElement.width;
+    recordingCanvas.height = mindarThree.renderer.domElement.height;
     recordingCtx = recordingCanvas.getContext('2d');
     
-    // Ambil stream dari canvas untuk direkam (30 frame per detik)
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    // --- MIME Type & Codec Setup ---
-    // Menggunakan codec yang stabil untuk menghindari error FFmpeg 'Invalid data'
-    let mimeType = 'video/webm; codecs=vp8'; 
-    
+    let mimeType = 'video/mp4; codecs="avc1.424028, mp4a.40.2"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
-        console.warn('Perekaman WebM VP8 tidak didukung. Mencoba VP9.');
+        console.warn('Perekaman MP4 tidak didukung. Beralih ke WebM.');
         mimeType = 'video/webm; codecs=vp9';
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-            console.warn('Perekaman WebM VP9 tidak didukung. Menggunakan WebM default.');
-            mimeType = 'video/webm'; 
-            if (statusEl) statusEl.textContent = 'Perekaman WebM default.';
-        }
-    } else {
-        if (statusEl) statusEl.textContent = `Perekaman menggunakan ${mimeType}.`;
+        if (statusEl) statusEl.textContent = 'Perekaman MP4 tidak didukung. Rekaman akan disimpan sebagai WebM.';
     }
-    // ----------------------------------------------------------------------
 
     try {
         mediaRecorder = new MediaRecorder(stream, { mimeType });
     } catch (e) {
-        console.error('Exception saat membuat MediaRecorder:', e);
-        if (statusEl) statusEl.textContent = `Perekaman gagal: ${e.name}`;
+        console.error('Exception while creating MediaRecorder:', e);
+        if (statusEl) statusEl.textContent = 'Video recording not supported.';
         return;
     }
     
-    // onstop (Mengembalikan kontrol rendering ke MindAR)
-    mediaRecorder.onstop = () => { 
+   mediaRecorder.onstop = async () => {
+    // Gabungkan data video (chunks)
+    const blob = new Blob(recordedChunks, {
+        // PASTIKAN MIME TYPE INI EKSPLISIT
+        type: 'video/webm;codecs=vp8', 
+        // Atau 'video/webm;codecs=vp9' atau 'video/webm;codecs=h264' tergantung dukungan browser Anda
+    });
+      
+      // PENTING: Panggil fungsi baru untuk upload dan konversi di sini.
+      handleFinalProcessing(superBuffer, mediaRecorder.mimeType);
+
+      // Lanjutkan dengan logika MindAR/Renderer cleanup yang sudah ada
       if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
@@ -353,41 +355,41 @@ function startVideoRecording() {
         videoRecordLoop = null;
       }
     };
-
     mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-            recordedBlobs.push(event.data);
-        }
+      if (event.data && event.data.size > 0) {
+        recordedBlobs.push(event.data);
+      }
     };
     
-    // *** PERBAIKAN KRITIS AR FREEZE ***
-    function drawFrame() {
-        if (renderer.domElement && recordingCtx) {
-            // 1. PERBAIKAN: Panggil renderer.render()
-            // Ini MENGGERAKKAN stiker AR, MindAR face tracking, dan memperbarui canvas WebGL.
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
+    const glCanvas = mindarThree.renderer.domElement;
+    const videoElement = mindarThree.video;
+    
+   function drawFrame() {
+      // Pastikan renderer me-render frame terbaru
+      renderer.render(scene, camera);
+      
+      // Bersihkan kanvas perekaman terlebih dahulu
+      recordingCtx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-            // 2. Gambar frame yang sudah diperbarui dari canvas WebGL
-            // Ini merekam frame AR yang bergerak ke recordingCanvas (MediaRecorder)
-            recordingCtx.drawImage(renderer.domElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
-        }
-        if (isRecording) {
-            // Lanjutkan loop kustom untuk frame berikutnya
-            videoRecordLoop = requestAnimationFrame(drawFrame);
-        }
+      recordingCtx.save();
+      recordingCtx.scale(-1, 1);
+      recordingCtx.drawImage(videoElement, -recordingCanvas.width, 0, recordingCanvas.width, recordingCanvas.height);
+      recordingCtx.restore();
+
+      // Gambar stiker AR dari canvas WebGL di atas video
+      recordingCtx.drawImage(glCanvas, 0, 0);
+
+      videoRecordLoop = requestAnimationFrame(drawFrame);
     }
-    // ****************************************
+    videoRecordLoop = requestAnimationFrame(drawFrame);
 
     mediaRecorder.start();
-    videoRecordLoop = requestAnimationFrame(drawFrame); // Mulai loop pengambilan frame kustom
-    
     isRecording = true;
     if (statusEl) statusEl.textContent = 'Recording...';
     console.log('Video recording started');
+    // ** Tambahkan panggilan ke fungsi startCountdown di sini **
     startCountdown();
-}
+  }
 
 function showLoader(message = 'Mengonversi video...') {
     // Ambil elemen dari DOM di dalam fungsi
@@ -443,7 +445,6 @@ function showPreview(url, type) {
 
 async function stopVideoRecording() {
     
-    // 1. Validasi dan Hentikan Perekaman
     if (!isRecording || !mediaRecorder) return;
 
     if (videoRecordLoop) {
@@ -454,32 +455,21 @@ async function stopVideoRecording() {
         photoToggleBtn.disabled = false;
     }
 
-    mediaRecorder.stop(); 
+    mediaRecorder.stop(); // <-- HANYA INI YANG TERSISA
     isRecording = false;
     stopCountdown();
 
+    // Tampilkan loader saat konversi akan dimulai
     showLoader();
 
-    console.log('Starting Upload Supabase');
-    try {
-        // Gabungkan Blob yang direkam
-        const videoBlob = new Blob(recordedBlobs, { 
-             // Gunakan mimeType yang sudah disetel saat startRecording (misalnya 'video/webm;codecs=vp8')
-             type: mediaRecorder.mimeType || 'video/webm' 
-        });
+    console.log('Starting Upload Suppabase');
+ try {
+        const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
         const fileName = `input/${Date.now()}.webm`;
-
-        // *** PERBAIKAN KRITIS: CEK UKURAN FILE ***
-        // Memblokir upload jika file terlalu kecil/rusak (di bawah 5KB)
-        const MIN_FILE_SIZE_BYTES = 1024 * 5; // 5KB
-        if (videoBlob.size < MIN_FILE_SIZE_BYTES) {
-             throw new Error(`File video terlalu kecil (${(videoBlob.size / 1024).toFixed(2)} KB). Harap rekam minimal 2 detik.`);
-        }
-        // ****************************************
 
         // 1. UPLOAD LANGSUNG KE SUPABASE STORAGE
         const { data, error: uploadError } = await supabase.storage
-            .from('videos') 
+            .from('videos') // Ganti dengan nama bucket Anda (misalnya: 'videos')
             .upload(fileName, videoBlob, {
                 cacheControl: '3600',
                 upsert: false,
@@ -488,7 +478,7 @@ async function stopVideoRecording() {
 
         if (uploadError) throw new Error(`Supabase Upload Gagal: ${uploadError.message}`);
 
-        // 2. Dapatkan Public URL
+        // 2. Dapatkan Public URL (URL ini yang akan dibaca oleh backend)
         const { data: publicUrlData } = supabase.storage
             .from('videos')
             .getPublicUrl(fileName);
@@ -497,51 +487,57 @@ async function stopVideoRecording() {
 
         console.log('Video berhasil diupload ke:', videoUrl);
         
-        // 3. PANGGIL VERCEL API (/api/convert)
+        // 3. PANGGIL VERCEL API HANYA DENGAN URL
         const response = await fetch('/api/convert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 inputUrl: videoUrl,
-                inputFileName: fileName, 
+                inputFileName: fileName, // Kirim nama file agar backend tahu yang mana yang harus dihapus
             }),
         });
 
         if (!response.ok) {
-            // Ambil pesan error dari backend Vercel
+            // Backend akan mengembalikan error message yang sudah terstruktur
             const errorBody = await response.json(); 
             throw new Error(`Konversi API gagal: ${response.status} - ${errorBody.message || 'Unknown Error'}`);
         }
 
-        // 4. Menerima URL MP4 yang sudah dikonversi
+        // 4. Menerima URL MP4 yang sudah dikonversi (atau Blob jika backend mengirim Blob)
         const { outputUrl } = await response.json(); 
+        
+        // Ganti baris ini:
+        // const convertedBlob = await response.blob(); 
+        // const videoURL = URL.createObjectURL(convertedBlob); 
+        
+        // Karena kita menerima URL:
         const videoURL = outputUrl; 
 
-        // Tampilkan pratinjau
+        // Tampilkan pratinjau dengan video MP4 yang sudah dikonversi
         showPreview(videoURL, 'video');
         
+        // Opsional: Hapus file input WebM setelah konversi sukses
+        // (Biasanya dilakukan di backend, tapi jika ingin di frontend):
+        // await supabase.storage.from('videos').remove([fileName]);
+
     } catch (error) {
-        console.error('Alur Video Gagal Total:', error.message);
-        // Tampilkan pesan kegagalan ke pengguna
-        const userMessage = error.message.includes("File video terlalu kecil") ? 
-                            error.message : 
-                            "Perekaman Gagal. Coba rekam video yang lebih panjang.";
-        if (statusEl) statusEl.textContent = userMessage;
-
+        // ... (kode error Anda)
     } finally {
+        // Sembunyikan loader
         hideLoader();
-     
-        // Reset variabel perekaman
-        recordingCanvas = null;
-        recordingCtx = null;
-        recordedBlobs = [];
 
-        const camBtn = document.getElementById('cam-btn');
-        if (camBtn) {
-            camBtn.disabled = false;
-        }
     }
-}
+     
+    // Reset variabel perekaman
+    recordingCanvas = null;
+    recordingCtx = null;
+    recordedBlobs = [];
+
+    const camBtn = document.getElementById('cam-btn');
+    if (camBtn) {
+        camBtn.disabled = false; // **AKTIFKAN KEMBALI TOMBOL SETELAH SELESAI MEREKAM**
+    }
+  }
   
   // Fungsi untuk menyembunyikan pratinjau
 function hidePreview() {
@@ -872,6 +868,71 @@ function hidePreview() {
           setTimeout(()=> sel && sel.classList.remove('bounce'), 300);
         });
       }
+    }
+  }
+
+  async function handleFinalProcessing(videoBlob, mimeType) {
+    showLoader();
+    console.log('Starting Final Processing (Upload & Convert)');
+
+    // Nama file harus unik
+    const fileName = `input/${Date.now()}.webm`; 
+
+    try {
+        // 1. UPLOAD LANGSUNG KE SUPABASE STORAGE
+        const { error: uploadError } = await supabase.storage
+            .from('videos') 
+            .upload(fileName, videoBlob, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: mimeType,
+            });
+
+        if (uploadError) throw new Error(`Supabase Upload Gagal: ${uploadError.message}`);
+
+        // 2. Dapatkan Public URL
+        const { data: publicUrlData } = supabase.storage
+            .from('videos')
+            .getPublicUrl(fileName);
+
+        const videoUrl = publicUrlData.publicUrl;
+        console.log('Video berhasil diupload ke:', videoUrl);
+        
+        // 3. PANGGIL VERCEL API
+        const response = await fetch('/api/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                inputUrl: videoUrl,
+                inputFileName: fileName, 
+            }),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.json(); 
+            throw new Error(`Konversi API gagal: ${response.status} - ${errorBody.message || 'Unknown Error'}`);
+        }
+
+        // 4. Menerima URL MP4 yang sudah dikonversi
+        const { outputUrl } = await response.json(); 
+        showPreview(outputUrl, 'video');
+
+    } catch (error) {
+        console.error('Alur Video Gagal Total:', error.message);
+        if (statusEl) statusEl.textContent = `Perekaman Gagal: ${error.message}`;
+
+    } finally {
+        // Sembunyikan loader
+        hideLoader();
+
+        // Reset variabel perekaman
+        // Hapus kode recordedBlobs = []; karena onstop sudah selesai.
+        recordingCanvas = null;
+        recordingCtx = null;
+        if (recordedBlobs) recordedBlobs.length = 0; // Bersihkan array untuk rekaman berikutnya
+
+        const camBtn = document.getElementById('cam-btn');
+        if (camBtn) camBtn.disabled = false;
     }
   }
 
