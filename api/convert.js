@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Konfigurasi Vercel
-// PERBAIKAN: Menggunakan module.exports.config untuk CommonJS
+// Menggunakan module.exports.config untuk CommonJS
 module.exports.config = {
   memory: 3008, // Tingkatkan memori untuk video besar
   maxDuration: 180, // Tingkatkan durasi maksimal ke 180 detik (3 menit)
@@ -90,10 +90,12 @@ module.exports = async (req, res) => {
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // PERBAIKAN KRITIS: Menambahkan opsi toleransi input
+                // PERBAIKAN KRITIS: Menambahkan flag toleransi input
                 .inputOptions([
                     '-probesize 50M', 
-                    '-analyzeduration 50M'
+                    '-analyzeduration 50M',
+                    '-fflags +genpts', // <-- Flag kuat untuk meregenerasi timestamp
+                    '-strict -2'       // <-- Flag kuat untuk codec eksperimental
                 ])
                 .videoCodec('libx264')
                 .outputOptions([
@@ -143,6 +145,7 @@ module.exports = async (req, res) => {
         res.status(500).json({ message: `Internal Server Error: ${error.message}` });
     } finally {
         // 6. Bersihkan File Temporer Lokal dan Supabase
+        // Membersihkan file di disk Vercel
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer Vercel telah dibersihkan.');
