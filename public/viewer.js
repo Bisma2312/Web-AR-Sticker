@@ -288,13 +288,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     });
   }
   
-  function startVideoRecording() {
+function startVideoRecording() {
     // Pastikan tidak ada perekaman yang sedang berjalan
     if (isRecording) return;
     
     // Hentikan animasi loop utama MindAR/Three.js
+    // Kita mengambil alih rendering untuk merekam frame secara sinkron
     if (renderer && renderer.setAnimationLoop) {
-      renderer.setAnimationLoop(null);
+      renderer.setAnimationLoop(null); 
     }
     
     // Inisialisasi canvas untuk perekaman video
@@ -306,19 +307,18 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     recordingCtx = recordingCanvas.getContext('2d');
     
-    // Ambil stream dari canvas untuk direkam
+    // Ambil stream dari canvas untuk direkam (30 frame per detik)
     const stream = recordingCanvas.captureStream(30);
     recordedBlobs = [];
     
-    // --- PERBAIKAN KRITIS: Eksplisit MIME Type dan Codec yang Stabil ---
-    // Menggunakan VP8 atau VP9 yang lebih stabil dan didukung baik oleh FFmpeg
+    // --- MIME Type & Codec Setup ---
+    // Menggunakan codec yang stabil untuk menghindari error FFmpeg 'Invalid data'
     let mimeType = 'video/webm; codecs=vp8'; 
     
     if (!MediaRecorder.isTypeSupported(mimeType)) {
         console.warn('Perekaman WebM VP8 tidak didukung. Mencoba VP9.');
         mimeType = 'video/webm; codecs=vp9';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
-            // Fallback ke WebM default jika VP8/VP9 gagal
             console.warn('Perekaman WebM VP9 tidak didukung. Menggunakan WebM default.');
             mimeType = 'video/webm'; 
             if (statusEl) statusEl.textContent = 'Perekaman WebM default.';
@@ -336,10 +336,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         return;
     }
     
-    // --- PERBAIKAN LOGIC: onstop hanya untuk cleanup MindAR/Renderer ---
-    // Semua logika upload/konversi dipindahkan ke stopVideoRecording
+    // onstop (Mengembalikan kontrol rendering ke MindAR)
     mediaRecorder.onstop = () => { 
-      // Lanjutkan dengan logika MindAR/Renderer cleanup
       if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
@@ -362,19 +360,28 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
     };
     
-    // Fungsi loop untuk mengambil frame dari renderer
+    // *** PERBAIKAN KRITIS AR FREEZE ***
     function drawFrame() {
         if (renderer.domElement && recordingCtx) {
-            // Gambar scene AR (yang sudah di-render oleh MindAR) ke recordingCanvas
+            // 1. PERBAIKAN: Panggil renderer.render()
+            // Ini MENGGERAKKAN stiker AR, MindAR face tracking, dan memperbarui canvas WebGL.
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+
+            // 2. Gambar frame yang sudah diperbarui dari canvas WebGL
+            // Ini merekam frame AR yang bergerak ke recordingCanvas (MediaRecorder)
             recordingCtx.drawImage(renderer.domElement, 0, 0, recordingCanvas.width, recordingCanvas.height);
         }
         if (isRecording) {
+            // Lanjutkan loop kustom untuk frame berikutnya
             videoRecordLoop = requestAnimationFrame(drawFrame);
         }
     }
+    // ****************************************
 
     mediaRecorder.start();
-    videoRecordLoop = requestAnimationFrame(drawFrame); // Mulai loop pengambilan frame
+    videoRecordLoop = requestAnimationFrame(drawFrame); // Mulai loop pengambilan frame kustom
     
     isRecording = true;
     if (statusEl) statusEl.textContent = 'Recording...';
