@@ -2,6 +2,17 @@ import * as THREE from 'three';
 import { MindARThree } from 'mindar-face-three';
 // AR Viewer with in-AR sticker editing via direct tap and overlay handles
 (async function(){
+  // Ambil dari window object jika sudah di-set di HTML, atau hardcode jika perlu
+// BARIS BARU (SOLUSI FRONTEND)
+const SUPABASE_URL = 'https://jaqoohogcxwmwpcohnfk.supabase.co'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcW9vaG9nY3h3bXdwY29obmZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njg4NjcxMiwiZXhwIjoyMDcyNDYyNzEyfQ.Z1w-r3FelIQuYsaE_W6ZBpxBMCl9du6FJnXG-ckyqfA';
+
+// Akses Supabase client dari variabel global (setelah dimuat oleh CDN)
+const { createClient } = window.supabase; 
+
+// Inisialisasi Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
   const t = qs.get('t');
@@ -33,8 +44,7 @@ import { MindARThree } from 'mindar-face-three';
   let recordingCanvas; // Kanvas untuk menggabungkan video dan AR
   let recordingCtx;
   let videoRecordLoop; // Loop untuk menggambar video selama perekaman
-  let ffmpeg = null;
-  let ffmpegLoaded = false;
+
   
   // ** NEW: Variabel untuk menyimpan data pratinjau saat ini **
   let currentPreviewUrl = null;
@@ -319,11 +329,14 @@ import { MindARThree } from 'mindar-face-three';
     }
     
     mediaRecorder.onstop = (event) => {
-      console.log('Recorder stopped:', event);
+      console.log('Recorder stopped, starting processing.', event);
+      
       const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-      const videoURL = window.URL.createObjectURL(superBuffer);
-      showPreview(videoURL, 'video');
+      
+      // PENTING: Panggil fungsi baru untuk upload dan konversi di sini.
+      handleFinalProcessing(superBuffer, mediaRecorder.mimeType);
 
+      // Lanjutkan dengan logika MindAR/Renderer cleanup yang sudah ada
       if (renderer && renderer.setAnimationLoop) {
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
@@ -374,37 +387,6 @@ import { MindARThree } from 'mindar-face-three';
     // ** Tambahkan panggilan ke fungsi startCountdown di sini **
     startCountdown();
   }
-
-async function loadFFmpeg() {
-    if (ffmpegLoaded) return;
-    
-    // Pastikan FFmpeg tersedia di window sebelum mencoba menggunakannya
-    // if (!window.FFmpeg) {
-    //     console.error('Perpustakaan FFmpeg tidak tersedia.');
-    //     showLoader('Gagal memuat konverter. Coba muat ulang halaman.');
-    //     return;
-    // }
-   
-       showLoader('Memuat konverter...');
-
-    // Hapus semua logika pengecekan timing/global
-    
-    try {
-         ffmpeg = window.FFmpeg.createFFmpeg({ 
-         coreURL: '/ffmpeg_files/ffmpeg-core.js', 
-         wasmURL: '/ffmpeg_files/ffmpeg-core.wasm',
-         log: true,
-     });
-        
-        await ffmpeg.load();
-        ffmpegLoaded = true;
-        showLoader('Konverter dimuat. Siap!');
-
-    } catch (error) {
-        console.error('Gagal memuat FFmpeg Core:', error);
-        showLoader('Gagal memuat konverter. Error teknis: ' + error.message);
-    }
-}
 
 function showLoader(message = 'Mengonversi video...') {
     // Ambil elemen dari DOM di dalam fungsi
@@ -462,81 +444,87 @@ async function stopVideoRecording() {
     
     if (!isRecording || !mediaRecorder) return;
 
-    // Matikan loop gambar saat perekaman berhenti
     if (videoRecordLoop) {
         cancelAnimationFrame(videoRecordLoop);
-        videoRecordLoop = null;
     }
 
     if (photoToggleBtn) {
-        photoToggleBtn.disabled = false; // **AKTIFKAN KEMBALI TOMBOL PHOTO MODE**
+        photoToggleBtn.disabled = false;
     }
 
-    mediaRecorder.stop();
+    mediaRecorder.stop(); // <-- HANYA INI YANG TERSISA
     isRecording = false;
     stopCountdown();
 
     // Tampilkan loader saat konversi akan dimulai
     showLoader();
 
-    console.log('Video recording stopped. Starting conversion...');
+    console.log('Starting Upload Suppabase');
+ try {
+        const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
+        const fileName = `input/${Date.now()}.webm`;
 
-    try {
-        await loadFFmpeg();
-    } catch (e) {
-        console.error("Gagal memuat FFmpeg sebelum konversi:", e);
-        showLoader('Konversi gagal: FFmpeg tidak termuat.');
-        hideLoader();
-        return; // Hentikan fungsi jika load gagal
-    }
-    // ==========================================================
-    
-    try {
-        const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-        const inputFilename = 'input.webm';
+        // 1. UPLOAD LANGSUNG KE SUPABASE STORAGE
+        const { data, error: uploadError } = await supabase.storage
+            .from('videos') // Ganti dengan nama bucket Anda (misalnya: 'videos')
+            .upload(fileName, videoBlob, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: mediaRecorder.mimeType,
+            });
 
-        // BARIS BERIKUTNYA MENGGUNAKAN ffmpeg.FS dan fetchFile
-        // Baris ini sekarang aman karena Anda sudah menunggu loadFFmpeg() di atas.
-        await ffmpeg.FS('writeFile', inputFilename, await fetchFile(superBuffer)); 
+        if (uploadError) throw new Error(`Supabase Upload Gagal: ${uploadError.message}`);
 
-        // Jalankan perintah konversi
-        const outputFilename = 'output.mp4';
-        await ffmpeg.run('-i', inputFilename, '-c:v', 'libx264', '-crf', '23', '-preset', 'fast', '-c:a', 'aac', '-b:a', '128k', outputFilename);
+        // 2. Dapatkan Public URL (URL ini yang akan dibaca oleh backend)
+        const { data: publicUrlData } = supabase.storage
+            .from('videos')
+            .getPublicUrl(fileName);
 
-        // Baca kembali file yang sudah dikonversi
-        const data = ffmpeg.FS('readFile', outputFilename);
-        const convertedBlob = new Blob([data.buffer], { type: 'video/mp4' });
-        const videoURL = URL.createObjectURL(convertedBlob);
+        const videoUrl = publicUrlData.publicUrl;
+
+        console.log('Video berhasil diupload ke:', videoUrl);
+        
+        // 3. PANGGIL VERCEL API HANYA DENGAN URL
+        const response = await fetch('/api/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                inputUrl: videoUrl,
+                inputFileName: fileName, // Kirim nama file agar backend tahu yang mana yang harus dihapus
+            }),
+        });
+
+        if (!response.ok) {
+            // Backend akan mengembalikan error message yang sudah terstruktur
+            const errorBody = await response.json(); 
+            throw new Error(`Konversi API gagal: ${response.status} - ${errorBody.message || 'Unknown Error'}`);
+        }
+
+        // 4. Menerima URL MP4 yang sudah dikonversi (atau Blob jika backend mengirim Blob)
+        const { outputUrl } = await response.json(); 
+        
+        // Ganti baris ini:
+        // const convertedBlob = await response.blob(); 
+        // const videoURL = URL.createObjectURL(convertedBlob); 
+        
+        // Karena kita menerima URL:
+        const videoURL = outputUrl; 
 
         // Tampilkan pratinjau dengan video MP4 yang sudah dikonversi
         showPreview(videoURL, 'video');
+        
+        // Opsional: Hapus file input WebM setelah konversi sukses
+        // (Biasanya dilakukan di backend, tapi jika ingin di frontend):
+        // await supabase.storage.from('videos').remove([fileName]);
 
     } catch (error) {
-        console.error('Video conversion failed:', error);
-        if (statusEl) statusEl.textContent = 'Konversi video gagal. Memuat pratinjau asli.';
-
-        // Fallback ke video asli jika konversi gagal
-        const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-        const videoURL = window.URL.createObjectURL(superBuffer);
-        showPreview(videoURL, 'video');
-
+        // ... (kode error Anda)
     } finally {
         // Sembunyikan loader
         hideLoader();
-        // Bersihkan data dari memori FFmpeg
-        try { ffmpeg.FS('unlink', 'input.webm'); } catch (_) {}
-        try { ffmpeg.FS('unlink', 'output.mp4'); } catch (_) {}
+
     }
-
-    // // Kembalikan loop animasi MindAR setelah selesai
-    // if (renderer && renderer.setAnimationLoop) {
-    //     renderer.setAnimationLoop(() => {
-    //         renderer.render(scene, camera);
-    //         updateSelectionOverlay();
-    //         updateStickerPositions();
-    //     });
-    // }
-
+     
     // Reset variabel perekaman
     recordingCanvas = null;
     recordingCtx = null;
@@ -712,7 +700,7 @@ function hidePreview() {
       if (isRecording) {
         stopVideoRecording();
       } else {
-        await loadFFmpeg(); // Pastikan FFmpeg dimuat sebelum memulai perekaman
+      
         startVideoRecording();
       }
     }
@@ -877,6 +865,71 @@ function hidePreview() {
           setTimeout(()=> sel && sel.classList.remove('bounce'), 300);
         });
       }
+    }
+  }
+
+  async function handleFinalProcessing(videoBlob, mimeType) {
+    showLoader();
+    console.log('Starting Final Processing (Upload & Convert)');
+
+    // Nama file harus unik
+    const fileName = `input/${Date.now()}.webm`; 
+
+    try {
+        // 1. UPLOAD LANGSUNG KE SUPABASE STORAGE
+        const { error: uploadError } = await supabase.storage
+            .from('videos') 
+            .upload(fileName, videoBlob, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: mimeType,
+            });
+
+        if (uploadError) throw new Error(`Supabase Upload Gagal: ${uploadError.message}`);
+
+        // 2. Dapatkan Public URL
+        const { data: publicUrlData } = supabase.storage
+            .from('videos')
+            .getPublicUrl(fileName);
+
+        const videoUrl = publicUrlData.publicUrl;
+        console.log('Video berhasil diupload ke:', videoUrl);
+        
+        // 3. PANGGIL VERCEL API
+        const response = await fetch('/api/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                inputUrl: videoUrl,
+                inputFileName: fileName, 
+            }),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.json(); 
+            throw new Error(`Konversi API gagal: ${response.status} - ${errorBody.message || 'Unknown Error'}`);
+        }
+
+        // 4. Menerima URL MP4 yang sudah dikonversi
+        const { outputUrl } = await response.json(); 
+        showPreview(outputUrl, 'video');
+
+    } catch (error) {
+        console.error('Alur Video Gagal Total:', error.message);
+        if (statusEl) statusEl.textContent = `Perekaman Gagal: ${error.message}`;
+
+    } finally {
+        // Sembunyikan loader
+        hideLoader();
+
+        // Reset variabel perekaman
+        // Hapus kode recordedBlobs = []; karena onstop sudah selesai.
+        recordingCanvas = null;
+        recordingCtx = null;
+        if (recordedBlobs) recordedBlobs.length = 0; // Bersihkan array untuk rekaman berikutnya
+
+        const camBtn = document.getElementById('cam-btn');
+        if (camBtn) camBtn.disabled = false;
     }
   }
 

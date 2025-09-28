@@ -1,30 +1,43 @@
-// /api/convert.js (Final Version using Multer)
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const util = require('util');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
-const multer = require('multer'); // BARU: Middleware untuk menangani FormData
+const axios = require('axios'); // Untuk mengunduh file dari URL Supabase
+const { createClient } = require('@supabase/supabase-js'); // Untuk upload & cleanup
 
-// Fungsi utilitas untuk promisify (mengubah callback menjadi Promise)
-const upload = util.promisify(multer().single('video')); // 'video' HARUS SAMA dengan nama yang digunakan di formData.append('video', ...)
+// Inisialisasi Supabase client (menggunakan SERVICE ROLE KEY untuk izin penuh)
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Gunakan Service Role Key
+const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'videos'; 
 
-// 1. KONFIGURASI KRUSIAL: Mematikan Body Parser dan MENAMBAH BATASAN VERCEL
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error("SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY tidak terdefinisi.");
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false }, // Penting di lingkungan serverless
+});
+
+// Konfigurasi Vercel
 export const config = {
-  // Peningkatan batas memori (dari default 128mb ke 1024mb)
   memory: 1024, 
-  // Peningkatan batas durasi eksekusi (dari default 10s ke 60s)
   maxDuration: 60, 
-  api: {
-    bodyParser: false, // Wajib jika menggunakan Multer
-    responseLimit: '100mb', 
-  },
+  // Kita kembali ke JSON default
 };
 
-// Penting: Beri tahu fluent-ffmpeg di mana menemukan binary FFmpeg
 ffmpeg.setFfmpegPath(ffmpegStatic);
+
+// Fungsi untuk membersihkan file di bucket Supabase
+const cleanupSupabase = async (filePaths) => {
+    if (filePaths && filePaths.length > 0) {
+        const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
+        if (error) console.error("Gagal membersihkan Supabase:", error);
+        else console.log("File temporer Supabase telah dibersihkan.");
+    }
+};
+
 
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
@@ -33,28 +46,39 @@ module.exports = async (req, res) => {
 
     const tempDir = os.tmpdir();
     let inputPath, outputPath;
+    let filesToCleanup = []; // Array untuk menyimpan nama file Supabase yang harus dihapus
 
     try {
-        // PERBAIKAN KRUSIAL: Gunakan multer untuk memproses FormData
-        await upload(req, res);
-
-        const inputBuffer = req.file ? req.file.buffer : null;
+        const { inputUrl, inputFileName } = req.body; 
         
-        if (!inputBuffer || inputBuffer.length === 0) {
-            console.error('Buffer input kosong setelah Multer diproses.');
-            // Ini biasanya terjadi jika file tidak dinamai 'video' di frontend
-            return res.status(400).send('Permintaan video kosong. Pastikan FormData dinamai "video".'); 
+        if (!inputUrl || !inputFileName) {
+            return res.status(400).json({ message: 'Input URL dan nama file tidak ditemukan.' });
         }
         
-        // 1. Tulis Buffer ke File Temporer sebagai Input
-        const timestamp = Date.now();
-        inputPath = path.join(tempDir, `input-${timestamp}.webm`);
-        outputPath = path.join(tempDir, `output-${timestamp}.mp4`);
-        
-        fs.writeFileSync(inputPath, inputBuffer);
-        console.log(`File input sementara dibuat: ${inputPath}`);
+        // Nama file output di Supabase
+        const outputFileName = `output/${path.parse(inputFileName).name}_converted.mp4`;
+        filesToCleanup.push(inputFileName); // Tambahkan input untuk dibersihkan nanti
 
-        // 2. Jalankan Konversi menggunakan fluent-ffmpeg
+        // 1. UNDUH File Video dari Supabase ke Disk Vercel
+        inputPath = path.join(tempDir, `input_${path.basename(inputFileName)}`);
+        outputPath = path.join(tempDir, `output_${path.basename(outputFileName)}`);
+        
+        const fileWriter = fs.createWriteStream(inputPath);
+        const response = await axios({
+            method: 'get',
+            url: inputUrl,
+            responseType: 'stream',
+        });
+        
+        await new Promise((resolve, reject) => {
+            response.data.pipe(fileWriter);
+            response.data.on('error', reject);
+            fileWriter.on('finish', resolve);
+            fileWriter.on('error', reject);
+        });
+        console.log(`File input sementara di Vercel dibuat: ${inputPath}`);
+
+        // 2. Jalankan Konversi
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
                 .videoCodec('libx264')
@@ -76,21 +100,40 @@ module.exports = async (req, res) => {
                 .save(outputPath);
         });
 
-        // 3. Baca File Output dan Kirim Kembali ke Browser
+        // 3. UPLOAD File MP4 Hasil Konversi ke Supabase
         const outputBuffer = fs.readFileSync(outputPath);
 
-        res.setHeader('Content-Type', 'video/mp4');
-        res.setHeader('Content-Length', outputBuffer.length);
-        res.status(200).send(outputBuffer);
+        const { error: uploadOutputError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .upload(outputFileName, outputBuffer, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: 'video/mp4',
+            });
+            
+        if (uploadOutputError) throw new Error(`Supabase Upload Output Gagal: ${uploadOutputError.message}`);
+
+        // 4. Dapatkan Public URL hasil konversi
+        const { data: publicUrlData } = supabase.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(outputFileName);
+
+        const outputUrl = publicUrlData.publicUrl;
+
+        // 5. Kirim URL hasil konversi kembali ke frontend
+        res.status(200).json({ outputUrl });
 
     } catch (error) {
-        // Cek error dari Multer atau FFmpeg
-        console.error('Server Error (500) Multer/FFmpeg:', error.message);
-        res.status(500).send(`Internal Server Error: ${error.message}`);
+        console.error('Server Error (500) Supabase Flow:', error.message);
+        res.status(500).json({ message: `Internal Server Error: ${error.message}` });
     } finally {
-        // 4. Bersihkan File Temporer
+        // 6. Bersihkan File Temporer Lokal dan Supabase
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-        console.log('File temporer telah dibersihkan.');
+        console.log('File temporer Vercel telah dibersihkan.');
+        
+        // Membersihkan file di Supabase
+        // Hapus file input WAJIB, file output (outputFileName) bersifat opsional tergantung kebutuhan
+        await cleanupSupabase(filesToCleanup); 
     }
 };
