@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "NODE_ENV=development node server/index.js",
-    "build": "esbuild public/app.js --bundle --outfile=public/app.bundle.js --format=iife --platform=browser --loader:.js=jsx --minify"
+    "build": "esbuild public/app.js --bundle --outfile=public/app.bundle.js --format=iife --platform=browser --loader:.js=jsx --minify && echo \"Installing Serverless Dependencies...\" && npm install"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"
