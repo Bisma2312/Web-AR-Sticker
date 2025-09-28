@@ -21,10 +21,9 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Konfigurasi Vercel
-export const config = {
+module.exports.config = { // <-- Ini adalah sintaks CJS
   memory: 1024, 
   maxDuration: 60, 
-  // Kita kembali ke JSON default
 };
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
