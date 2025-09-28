@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Konfigurasi Vercel
-// PERBAIKAN STABILITAS BUILD: Menggunakan module.exports.config (CommonJS)
+// PERBAIKAN CJS/ESM: Menggunakan module.exports.config untuk stabilitas build
 module.exports.config = {
   memory: 3008, // Tingkatkan memori untuk video besar
   maxDuration: 180, // Tingkatkan durasi maksimal ke 180 detik (3 menit)
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
 
     const tempDir = os.tmpdir();
     let inputPath, outputPath;
-    let filesToCleanup = []; 
+    let filesToCleanup = []; // Array untuk menyimpan nama file Supabase yang harus dihapus
 
     try {
         const { inputUrl, inputFileName } = req.body; 
@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
         
         // Nama file output di Supabase
         const outputFileName = `output/${path.parse(inputFileName).name}_converted.mp4`;
-        filesToCleanup.push(inputFileName); 
+        filesToCleanup.push(inputFileName); // Tambahkan input untuk dibersihkan nanti
 
         // Tentukan path lokal temporer
         inputPath = path.join(tempDir, `input_${path.basename(inputFileName)}`);
@@ -72,15 +72,14 @@ module.exports = async (req, res) => {
         // 1. UNDUH File Video dari Supabase ke Disk Vercel (Terautentikasi)
         const { data: downloadData, error: downloadError } = await supabase.storage
             .from(BUCKET_NAME)
-            .download(inputFileName); 
+            .download(inputFileName); // Menggunakan nama file di bucket, BUKAN URL publik
 
         if (downloadError) {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // PERBAIKAN BLOB: Konversi Blob/ArrayBuffer dari Supabase menjadi Buffer Node.js
-        const arrayBuffer = await downloadData.arrayBuffer();
-        const videoBuffer = Buffer.from(arrayBuffer); 
+        // PERBAIKAN BUFFER: Mengubah ArrayBuffer yang diterima dari Supabase menjadi Buffer
+        const videoBuffer = Buffer.from(downloadData); 
         
         // Simpan Buffer hasil download ke file lokal Vercel
         fs.writeFileSync(inputPath, videoBuffer); 
@@ -90,13 +89,6 @@ module.exports = async (req, res) => {
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // PERBAIKAN KRITIS UNTUK FILE RUSAK/TIDAK VALID
-                .inputOptions([
-                    '-probesize 50M', 
-                    '-analyzeduration 50M',
-                    '-fflags +genpts', // Flag kuat: Meregenerasi presentation timestamps
-                    '-strict -2'       // Flag kuat: Mode toleran/eksperimental untuk codec
-                ])
                 .videoCodec('libx264')
                 .outputOptions([
                     '-preset ultrafast', 
@@ -148,6 +140,7 @@ module.exports = async (req, res) => {
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer Vercel telah dibersihkan.');
         
+        // Membersihkan file di Supabase
         await cleanupSupabase(filesToCleanup); 
     }
 };
