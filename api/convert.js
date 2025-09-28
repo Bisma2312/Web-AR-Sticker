@@ -78,8 +78,17 @@ module.exports = async (req, res) => {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // PERBAIKAN BUFFER: Mengubah ArrayBuffer yang diterima dari Supabase menjadi Buffer
-        const videoBuffer = Buffer.from(downloadData); 
+        // ----------------------------------------------------------------
+        // PERBAIKAN FINAL UNTUK MASALAH BLOB:
+        // Kita secara eksplisit mengambil ArrayBuffer dari objek Blob (karena Vercel mengembalikannya) 
+        // sebelum mengonversinya menjadi Buffer.
+        // ----------------------------------------------------------------
+        
+        // Panggil arrayBuffer() pada objek data (yang merupakan instance dari Blob)
+        const arrayBuffer = await downloadData.arrayBuffer();
+
+        // Konversi ArrayBuffer menjadi Buffer yang dapat ditulis ke disk Node.js
+        const videoBuffer = Buffer.from(arrayBuffer); 
         
         // Simpan Buffer hasil download ke file lokal Vercel
         fs.writeFileSync(inputPath, videoBuffer); 
