@@ -62,6 +62,7 @@ module.exports = async (req, res) => {
         
         // Nama file output di Supabase
         const outputFileName = `output/${path.parse(inputFileName).name}_converted.mp4`;
+        // inputFileName di Supabase adalah full path, misalnya: 'input/1759109023895.webm'
         filesToCleanup.push(inputFileName); 
 
         // Tentukan path lokal temporer
@@ -78,7 +79,7 @@ module.exports = async (req, res) => {
              throw new Error(`Supabase Download Gagal: ${downloadError.message} (File: ${inputFileName})`);
         }
         
-        // Perbaikan BLOB: Konversi Blob (atau ArrayBuffer) menjadi Buffer
+        // Konversi Blob (atau ArrayBuffer) menjadi Buffer
         const arrayBuffer = await downloadData.arrayBuffer();
         const videoBuffer = Buffer.from(arrayBuffer); 
         
@@ -90,7 +91,7 @@ module.exports = async (req, res) => {
         // 2. Jalankan Konversi FFmpeg
         await new Promise((resolve, reject) => {
             ffmpeg(inputPath)
-                // PERBAIKAN KRITIS: Menambahkan opsi toleransi input
+                // Opsi untuk meningkatkan toleransi input, penting untuk WebM
                 .inputOptions([
                     '-probesize 50M', 
                     '-analyzeduration 50M'
@@ -101,7 +102,9 @@ module.exports = async (req, res) => {
                     '-crf 28', 
                     '-c:a aac',
                     '-b:a 128k',
-                    '-movflags +faststart'
+                    '-movflags +faststart',
+                    // PERBAIKAN KRITIS: Memastikan format piksel YUV420P untuk kompatibilitas H.264
+                    '-pix_fmt yuv420p'
                 ])
                 .on('end', () => {
                     console.log('Konversi FFmpeg Selesai!');
@@ -147,7 +150,7 @@ module.exports = async (req, res) => {
         if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         console.log('File temporer Vercel telah dibersihkan.');
         
-        // Membersihkan file di Supabase
+        // Membersihkan file input di Supabase
         await cleanupSupabase(filesToCleanup); 
     }
 };

@@ -444,10 +444,6 @@ async function stopVideoRecording() {
     
     if (!isRecording || !mediaRecorder) return;
 
-    if (videoRecordLoop) {
-        cancelAnimationFrame(videoRecordLoop);
-    }
-
     if (photoToggleBtn) {
         photoToggleBtn.disabled = false;
     }
@@ -459,72 +455,6 @@ async function stopVideoRecording() {
     // Tampilkan loader saat konversi akan dimulai
     showLoader();
 
-    console.log('Starting Upload Suppabase');
- try {
-        const videoBlob = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-        const fileName = `input/${Date.now()}.webm`;
-
-        // 1. UPLOAD LANGSUNG KE SUPABASE STORAGE
-        const { data, error: uploadError } = await supabase.storage
-            .from('videos') // Ganti dengan nama bucket Anda (misalnya: 'videos')
-            .upload(fileName, videoBlob, {
-                cacheControl: '3600',
-                upsert: false,
-                contentType: mediaRecorder.mimeType,
-            });
-
-        if (uploadError) throw new Error(`Supabase Upload Gagal: ${uploadError.message}`);
-
-        // 2. Dapatkan Public URL (URL ini yang akan dibaca oleh backend)
-        const { data: publicUrlData } = supabase.storage
-            .from('videos')
-            .getPublicUrl(fileName);
-
-        const videoUrl = publicUrlData.publicUrl;
-
-        console.log('Video berhasil diupload ke:', videoUrl);
-        
-        // 3. PANGGIL VERCEL API HANYA DENGAN URL
-        const response = await fetch('/api/convert', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                inputUrl: videoUrl,
-                inputFileName: fileName, // Kirim nama file agar backend tahu yang mana yang harus dihapus
-            }),
-        });
-
-        if (!response.ok) {
-            // Backend akan mengembalikan error message yang sudah terstruktur
-            const errorBody = await response.json(); 
-            throw new Error(`Konversi API gagal: ${response.status} - ${errorBody.message || 'Unknown Error'}`);
-        }
-
-        // 4. Menerima URL MP4 yang sudah dikonversi (atau Blob jika backend mengirim Blob)
-        const { outputUrl } = await response.json(); 
-        
-        // Ganti baris ini:
-        // const convertedBlob = await response.blob(); 
-        // const videoURL = URL.createObjectURL(convertedBlob); 
-        
-        // Karena kita menerima URL:
-        const videoURL = outputUrl; 
-
-        // Tampilkan pratinjau dengan video MP4 yang sudah dikonversi
-        showPreview(videoURL, 'video');
-        
-        // Opsional: Hapus file input WebM setelah konversi sukses
-        // (Biasanya dilakukan di backend, tapi jika ingin di frontend):
-        // await supabase.storage.from('videos').remove([fileName]);
-
-    } catch (error) {
-        // ... (kode error Anda)
-    } finally {
-        // Sembunyikan loader
-        hideLoader();
-
-    }
-     
     // Reset variabel perekaman
     recordingCanvas = null;
     recordingCtx = null;
