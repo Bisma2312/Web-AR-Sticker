@@ -444,27 +444,36 @@ async function stopVideoRecording() {
     
     if (!isRecording || !mediaRecorder) return;
 
+    // 1. KRITIS: Hentikan loop animasi terlebih dahulu
+    if (videoRecordLoop) {
+        cancelAnimationFrame(videoRecordLoop); // HENTIKAN PANGGILAN drawFrame BERIKUTNYA
+        videoRecordLoop = null; // (Opsional) pastikan loop di-reset
+    }
+
     if (photoToggleBtn) {
         photoToggleBtn.disabled = false;
     }
 
-    mediaRecorder.stop(); // <-- HANYA INI YANG TERSISA
+    mediaRecorder.stop(); 
     isRecording = false;
     stopCountdown();
 
     // Tampilkan loader saat konversi akan dimulai
     showLoader();
 
-    // Reset variabel perekaman
+    // 2. Lakukan Reset Variabel
+    // RESET HANYA DILAKUKAN SETELAH LOOP DI ATAS DIHENTIKAN
     recordingCanvas = null;
     recordingCtx = null;
     recordedBlobs = [];
+    
+    // ... (Logika handleFinalProcessing akan berjalan di onstop) ...
 
     const camBtn = document.getElementById('cam-btn');
     if (camBtn) {
-        camBtn.disabled = false; // **AKTIFKAN KEMBALI TOMBOL SETELAH SELESAI MEREKAM**
+        camBtn.disabled = false; 
     }
-  }
+}
   
   // Fungsi untuk menyembunyikan pratinjau
 function hidePreview() {
