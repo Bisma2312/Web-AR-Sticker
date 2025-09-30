@@ -16,6 +16,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json());
 
+//Uncoment if not needed
+// Video conversion endpoint
+// const convertHandler = require(path.join(__dirname, '..', 'api', 'convert'));
+// app.post(['/api/convert', '/convert'], convertHandler);
+
+
 // Multer memory storage (buffer) for direct upload to Supabase
 const upload = multer();
 

@@ -6,7 +6,6 @@ import { MindARThree } from 'mindar-face-three';
 // BARIS BARU (SOLUSI FRONTEND)
 const SUPABASE_URL = 'https://jaqoohogcxwmwpcohnfk.supabase.co'; 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcW9vaG9nY3h3bXdwY29obmZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njg4NjcxMiwiZXhwIjoyMDcyNDYyNzEyfQ.Z1w-r3FelIQuYsaE_W6ZBpxBMCl9du6FJnXG-ckyqfA';
-
 // Akses Supabase client dari variabel global (setelah dimuat oleh CDN)
 const { createClient } = window.supabase; 
 
@@ -52,6 +51,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // Deteksi perangkat iOS
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 
   // Elemen pratinjau
   const previewContainer = document.getElementById('preview-container');
@@ -102,7 +102,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   function stopCountdown() {
       clearInterval(countdownInterval);
       countdownTimerEl.style.display = 'none';
-  }
+    }
 
 
   if (!window.isSecureContext && location.protocol !== 'https:') {
@@ -288,8 +288,42 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     });
   }
   
+function showLoader(message = 'Mengonversi video...') {
+    // Ambil elemen dari DOM di dalam fungsi
+    const loaderOverlay = document.querySelector('.loader-overlay'); // <-- Menargetkan kelas
+    if (loaderOverlay) {
+        // ... (logika menampilkan)
+        loaderOverlay.classList.remove('hidden');
+        loaderOverlay.pointerEvents = 'none'; 
+        photoToggleBtn.disabled = true; // **NONAKTIFKAN TOMBOL PHOTO MODE**
+        const camBtn = document.getElementById('cam-btn');
+        if (camBtn) {
+            camBtn.disabled = true; 
+        }
+        addButton.disabled = true; // Nonaktifkan tombol add saat loader aktif
+        captureBtn.disabled = true; // Nonaktifkan tombol capture saat loader aktif
+    }
+}
+
+function hideLoader() {
+    // Ambil elemen dari DOM di dalam fungsi
+    const loaderOverlay = document.querySelector('.loader-overlay'); // <-- Menargetkan kelas
+    if (loaderOverlay) {
+        // ... (logika menyembunyikan)
+        loaderOverlay.classList.add('hidden');
+        // loaderOverlay.pointerEvents = 'none'; // Nonaktifkan interaksi mouse setelah disembunyikan
+        photoToggleBtn.disabled = false; // **NONAKTIFKAN TOMBOL PHOTO MODE**
+        const camBtn = document.getElementById('cam-btn');
+        if (camBtn) {
+            camBtn.disabled = false; 
+        }
+        addButton.disabled = false; // Aktifkan kembali tombol add setelah loader disembunyikan
+        captureBtn.disabled = false; // Aktifkan kembali tombol capture setelah loader disembunyikan
+    }
+}
+
   function startVideoRecording() {
-    
+
     if (!mindarThree || !mindarThree.renderer || !mindarThree.renderer.domElement || !mindarThree.video || isRecording) return;
     
     if (renderer && renderer.setAnimationLoop) renderer.setAnimationLoop(null);
@@ -329,10 +363,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
     
     mediaRecorder.onstop = (event) => {
-      console.log('Recorder stopped, starting processing.', event);
-      
+      console.log('Recorder stopped, starting processing.', event);;
       const superBuffer = new Blob(recordedBlobs, { type: mediaRecorder.mimeType });
-      
+
       // PENTING: Panggil fungsi baru untuk upload dan konversi di sini.
       handleFinalProcessing(superBuffer, mediaRecorder.mimeType);
 
@@ -387,26 +420,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     // ** Tambahkan panggilan ke fungsi startCountdown di sini **
     startCountdown();
   }
-
-function showLoader(message = 'Mengonversi video...') {
-    // Ambil elemen dari DOM di dalam fungsi
-    const loaderOverlay = document.querySelector('.loader-overlay');
-    if (loaderOverlay) {
-        const loadingText = loaderOverlay.querySelector('.loading-text');
-        if (loadingText) {
-            loadingText.textContent = message;
-        }
-        loaderOverlay.classList.remove('hidden');
-    }
-}
-
-function hideLoader() {
-    // Ambil elemen dari DOM di dalam fungsi
-    const loaderOverlay = document.querySelector('.loader-overlay');
-    if (loaderOverlay) {
-        loaderOverlay.classList.add('hidden');
-    }
-}
 function showPreview(url, type) {
   // ** NEW: Simpan URL dan tipe pratinjau saat ini **
   currentPreviewUrl = url;
@@ -449,7 +462,7 @@ async function stopVideoRecording() {
         cancelAnimationFrame(videoRecordLoop); // HENTIKAN PANGGILAN drawFrame BERIKUTNYA
         videoRecordLoop = null; // (Opsional) pastikan loop di-reset
     }
-
+    
     if (photoToggleBtn) {
         photoToggleBtn.disabled = false;
     }
@@ -457,9 +470,6 @@ async function stopVideoRecording() {
     mediaRecorder.stop(); 
     isRecording = false;
     stopCountdown();
-
-    // Tampilkan loader saat konversi akan dimulai
-    showLoader();
 
     // 2. Lakukan Reset Variabel
     // RESET HANYA DILAKUKAN SETELAH LOOP DI ATAS DIHENTIKAN
@@ -510,13 +520,42 @@ function hidePreview() {
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
+      //link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       if (statusEl) statusEl.textContent = 'File berhasil diunduh!';
   }
 
-  // Fungsi untuk berbagi file menggunakan Web Share API
+  async function saveFileAsBlob(url, filename) {
+    try {
+        const response = await fetch(url);
+        
+        // Jika response OK, ubah ke Blob
+        const blob = await response.blob();
+        
+        // Buat URL lokal (Blob URL)
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Bersihkan setelah selesai
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl); 
+        
+        if (statusEl) statusEl.textContent = 'File berhasil diunduh!';
+        
+    } catch (error) {
+        console.error('Gagal mengambil file karena CORS atau error lainnya:', error);
+    }
+}
+
+   // Fungsi untuk berbagi file menggunakan Web Share API
   async function shareFile(url, filename, mimeType) {
       if (navigator.share) {
         
@@ -585,8 +624,8 @@ function hidePreview() {
           hidePreview();
       }
   });
- 
-   // Left button -> open bottom sheet
+
+  // Left button -> open bottom sheet
   addButton.addEventListener("click", () => {
     overlaySheet.classList.add("active");
     bottomSheet.classList.add("active");
@@ -848,10 +887,13 @@ function hidePreview() {
             const errorBody = await response.json(); 
             throw new Error(`Konversi API gagal: ${response.status} - ${errorBody.message || 'Unknown Error'}`);
         }
+        
 
         // 4. Menerima URL MP4 yang sudah dikonversi
         const { outputUrl } = await response.json(); 
+        
         showPreview(outputUrl, 'video');
+        console.log('[CLIENT LOG: OUTPUT URL RECEIVED] Data yang diterima:', outputUrl);
 
     } catch (error) {
         console.error('Alur Video Gagal Total:', error.message);
@@ -1175,10 +1217,11 @@ function hidePreview() {
   }
   
   // ** NEW: Tambahkan event listeners untuk tombol Save dan Share **
-  saveButton.addEventListener('click', () => {
+  saveButton.addEventListener('click', function(event) {
     if (currentPreviewUrl) {
       const filename = currentPreviewType === 'photo' ? 'The Recharge Room by Lenovo.png' : 'The Recharge Room by Lenovo.mp4';
-      saveFile(currentPreviewUrl, filename);
+      // saveFile(currentPreviewUrl, filename); 
+      saveFileAsBlob(currentPreviewUrl, filename);
     }
   });
 
@@ -1191,6 +1234,8 @@ function hidePreview() {
       }
     }
   });
+
+
   
   async function maybeRecoverCamera(){
     try {
