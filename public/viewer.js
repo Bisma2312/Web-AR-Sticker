@@ -856,7 +856,7 @@ function hidePreview() {
     try {
         // 1. UPLOAD LANGSUNG KE SUPABASE STORAGE
         const { error: uploadError } = await supabase.storage
-            .from('videos-dev') 
+            .from('videos') 
             .upload(fileName, videoBlob, {
                 cacheControl: '3600',
                 upsert: false,
@@ -867,7 +867,7 @@ function hidePreview() {
 
         // 2. Dapatkan Public URL
         const { data: publicUrlData } = supabase.storage
-            .from('videos-dev')
+            .from('videos')
             .getPublicUrl(fileName);
 
         const videoUrl = publicUrlData.publicUrl;
