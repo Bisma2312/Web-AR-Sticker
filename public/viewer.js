@@ -4,8 +4,8 @@ import { MindARThree } from 'mindar-face-three';
 (async function(){
   // Ambil dari window object jika sudah di-set di HTML, atau hardcode jika perlu
 // BARIS BARU (SOLUSI FRONTEND)
-const SUPABASE_URL = 'https://amlsczcjjtphsctsgury.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtbHNjemNqanRwaHNjdHNndXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4Njc1MTIsImV4cCI6MjA3NDQ0MzUxMn0.x0DBIV2xS00E_AzUvanW7PtB-qpSGK9abyIeRCljgqc';
+const SUPABASE_URL = 'https://jaqoohogcxwmwpcohnfk.supabase.co'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcW9vaG9nY3h3bXdwY29obmZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njg4NjcxMiwiZXhwIjoyMDcyNDYyNzEyfQ.Z1w-r3FelIQuYsaE_W6ZBpxBMCl9du6FJnXG-ckyqfA';
 // Akses Supabase client dari variabel global (setelah dimuat oleh CDN)
 const { createClient } = window.supabase; 
 
